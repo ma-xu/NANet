@@ -5,3 +5,4 @@ from __future__ import absolute_import
 # Original
 from .resnet_old import *
 from .resnet_se import *
+from .resnet_na import *
