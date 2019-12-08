@@ -27,7 +27,7 @@ class NALayer(nn.Module):
         ## Spatial, (parallel)
         x_spatial = torch.mean(x, 1)
         x_spatial = x_spatial.view(b, h * w)
-        x_spatial = x_spatial - x_spatial.mean(dim=1, keepdim=True)
+        x_spatial =abs( x_spatial - x_spatial.mean(dim=1, keepdim=True))
         std = x_spatial.std(dim=1, keepdim=True) + 1e-5
         x_spatial = x_spatial / std
         x_spatial = x_spatial.view(b, 1, h, w)
