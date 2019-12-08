@@ -13,29 +13,40 @@ __all__ = ['na4_resnet18', 'na4_resnet34', 'na4_resnet50', 'na4_resnet101', 'na4
 class NALayer(nn.Module):
     def __init__(self, in_channel):
         super(NALayer, self).__init__()
-        self.weight1 = Parameter(torch.zeros(1))
-        self.bias1 = Parameter(torch.ones(1))
+        # self.weight1 = Parameter(torch.zeros(1))
+        # self.bias1 = Parameter(torch.ones(1))
         # self.weight2 = Parameter(torch.zeros(1,in_channel,1,1))
         # self.bias2 = Parameter(torch.ones(1,in_channel,1,1))
         self.sig = nn.Sigmoid()
 
+        self.weight2 = Parameter(torch.zeros(1))
+        self.bias2 = Parameter(torch.ones(1))
 
 
     def forward(self, x):
         b, c, h, w = x.size()
 
-        ## Spatial, (parallel)
-        x_spatial = torch.mean(x, 1)
-        x_spatial = x_spatial.view(b, h * w)
-        x_spatial =abs( x_spatial - x_spatial.mean(dim=1, keepdim=True))
-        std = x_spatial.std(dim=1, keepdim=True) + 1e-5
-        x_spatial = x_spatial / std
-        x_spatial = x_spatial.view(b, 1, h, w)
-        x_spatial = x_spatial * self.weight1 + self.bias1
-        x_spatial = self.sig(x_spatial)
-        out = x * x_spatial
+        # Context Modeling
+        x_context = torch.mean(x, 1,keepdim=True)
+        x_context = x_context.view(b,1, h * w,1)
+        x_diff = -abs(x_context - x_context.mean(dim=2, keepdim=True))
+        x_diff = F.softmax(x_diff, dim=2)
+        x_new = x.view(b,1,c,h*w)
+        context = torch.matmul(x_new, x_diff)
+        context = context.view(b, c)
 
-        return out
+        # Normalization
+        x_channel = context - context.mean(dim=1, keepdim=True)
+        std = x_channel.std(dim=1, keepdim=True) + 1e-5
+        x_channel = x_channel / std
+        x_channel = x_channel.view(b, c, 1, 1)
+        x_channel = x_channel * self.weight2 + self.bias2
+        x_channel = self.sig(x_channel)
+        x = x * x_channel
+
+        return x
+
+
 
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
@@ -239,7 +250,7 @@ def na4_resnet152(pretrained=False, **kwargs):
 
 def demo():
     net = na4_resnet50(num_classes=1000)
-    y = net(torch.randn(1, 3, 224,224)*100)
+    y = net(torch.randn(4, 3, 224,224)*100)
     print(y.size())
 
 demo()
