@@ -32,7 +32,7 @@ class NALayer(nn.Module):
 
         # ## Spatial, (first)
         x_spatial = self.conv(torch.mean(x,1,keepdim=True)) #[b,1,h,w]
-        x_spatial = x_spatial*self.avg_pool(x_spatial) #[b,1,h,w]
+        # x_spatial = x_spatial*self.avg_pool(x_spatial) #[b,1,h,w]
         x_spatial =x_spatial.view(b,h*w) #[b,h*w]
         x_spatial = x_spatial - x_spatial.mean(dim=1,keepdim=True) #[b,h*w]
         std = x_spatial.std(dim=1, keepdim=True) + 1e-5
@@ -261,4 +261,4 @@ def demo():
     y = net(torch.randn(1, 3, 224,224)*100)
     print(y.size())
 
-# demo()
+demo()
