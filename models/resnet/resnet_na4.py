@@ -13,48 +13,29 @@ __all__ = ['na4_resnet18', 'na4_resnet34', 'na4_resnet50', 'na4_resnet101', 'na4
 class NALayer(nn.Module):
     def __init__(self, in_channel):
         super(NALayer, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.weight1 = Parameter(torch.zeros(1, 1, 7, 7))
-        self.bias1 = Parameter(torch.ones(1, 1, 7, 7))
+        self.weight1 = Parameter(torch.zeros(1))
+        self.bias1 = Parameter(torch.ones(1))
         # self.weight2 = Parameter(torch.zeros(1,in_channel,1,1))
         # self.bias2 = Parameter(torch.ones(1,in_channel,1,1))
         self.sig = nn.Sigmoid()
-        self.conv = nn.Sequential(
-            nn.Conv2d(1, 1, 5,padding=(5-1)//2),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(1, 1, 5,padding=(5-1)//2),
-        )
 
 
 
     def forward(self, x):
         b, c, h, w = x.size()
 
-        # ## Spatial, (first)
-        x_spatial = self.conv(torch.mean(x,1,keepdim=True)) #[b,1,h,w]
-        # x_spatial = x_spatial*self.avg_pool(x_spatial) #[b,1,h,w]
-        x_spatial =x_spatial.view(b,h*w) #[b,h*w]
-        x_spatial = x_spatial - x_spatial.mean(dim=1,keepdim=True) #[b,h*w]
+        ## Spatial, (parallel)
+        x_spatial = torch.mean(x, 1)
+        x_spatial = x_spatial.view(b, h * w)
+        x_spatial = x_spatial - x_spatial.mean(dim=1, keepdim=True)
         std = x_spatial.std(dim=1, keepdim=True) + 1e-5
         x_spatial = x_spatial / std
         x_spatial = x_spatial.view(b, 1, h, w)
-        weight1 = F.interpolate(self.weight1,[h,w])
-        bias1 = F.interpolate(self.bias1,[h,w])
-        x_spatial = x_spatial*weight1 + bias1
+        x_spatial = x_spatial * self.weight1 + self.bias1
         x_spatial = self.sig(x_spatial)
-        x = x*x_spatial
+        out = x * x_spatial
 
-        # ## Channel, (second)
-        # x_channel = self.avg_pool(x).view(b,c)
-        # x_channel = x_channel - x_channel.mean(dim=1, keepdim=True)
-        # std = x_channel.std(dim=1, keepdim=True) + 1e-5
-        # x_channel = x_channel / std
-        # x_channel = x_channel.view(b, c, 1, 1)
-        # x_channel = x_channel * self.weight2 + self.bias2
-        # x_channel = self.sig(x_channel)
-        # x = x * x_channel
-
-        return x
+        return out
 
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
