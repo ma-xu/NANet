@@ -19,12 +19,19 @@ class NALayer(nn.Module):
         # self.weight2 = Parameter(torch.zeros(1,in_channel,1,1))
         # self.bias2 = Parameter(torch.ones(1,in_channel,1,1))
         self.sig = nn.Sigmoid()
+        self.conv = nn.Sequential(
+            nn.Conv2d(1, 1, 5,padding=(5-1)//2),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(1, 1, 5,padding=(5-1)//2),
+        )
+
+
 
     def forward(self, x):
         b, c, h, w = x.size()
 
         # ## Spatial, (first)
-        x_spatial = torch.mean(x,1,keepdim=True) #[b,1,h,w]
+        x_spatial = self.conv(torch.mean(x,1,keepdim=True)) #[b,1,h,w]
         x_spatial = x_spatial*self.avg_pool(x_spatial) #[b,1,h,w]
         x_spatial =x_spatial.view(b,h*w) #[b,h*w]
         x_spatial = x_spatial - x_spatial.mean(dim=1,keepdim=True) #[b,h*w]
