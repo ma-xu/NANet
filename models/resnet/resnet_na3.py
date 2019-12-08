@@ -11,32 +11,20 @@ import math
 __all__ = ['na3_resnet18', 'na3_resnet34', 'na3_resnet50', 'na3_resnet101', 'na3_resnet152']
 
 class NALayer(nn.Module):
-    def __init__(self, in_channel):
+    def __init__(self, in_channel,group=64):
         super(NALayer, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         # self.weight1 = Parameter(torch.zeros(1,1,7,7))
         # self.bias1 = Parameter(torch.ones(1))
-        self.weight2 = Parameter(torch.zeros(1,in_channel,1,1))
-        self.bias2 = Parameter(torch.ones(1,in_channel,1,1))
+        self.weight2 = Parameter(torch.zeros(1))
+        self.bias2 = Parameter(torch.ones(1))
         self.sig = nn.Sigmoid()
 
     def forward(self, x):
         b, c, h, w = x.size()
 
-        # ## Spatial, (first)
-        # x_spatial = torch.mean(x,1)
-        # x_spatial =x_spatial.view(b,h*w)
-        # x_spatial = x_spatial - x_spatial.mean(dim=1,keepdim=True)
-        # std = x_spatial.std(dim=1, keepdim=True) + 1e-5
-        # x_spatial = x_spatial / std
-        # x_spatial = x_spatial.view(b, 1, h, w)
-        # x_spatial = x_spatial*self.weight1 + self.bias1
-        # x_spatial = self.sig(x_spatial)
-        # x = x*x_spatial
-
-        ## Channel, (second)
-        x_channel = self.avg_pool(x).view(b,c)
-        x_channel = x_channel* x_channel.mean(dim=1, keepdim=True)
+        ## Channel, (parallel)
+        x_channel = self.avg_pool(x).view(b, c)
         x_channel = x_channel - x_channel.mean(dim=1, keepdim=True)
         std = x_channel.std(dim=1, keepdim=True) + 1e-5
         x_channel = x_channel / std
@@ -252,4 +240,4 @@ def demo():
     y = net(torch.randn(1, 3, 224,224))
     print(y.size())
 
-# demo()
+demo()
