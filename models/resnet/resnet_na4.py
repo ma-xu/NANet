@@ -253,4 +253,4 @@ def demo():
     y = net(torch.randn(4, 3, 224,224)*100)
     print(y.size())
 
-demo()
+# demo()
