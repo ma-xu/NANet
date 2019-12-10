@@ -30,7 +30,7 @@ class NALayer(nn.Module):
         # Context Modeling
         # x_context = torch.mean(x, 1, keepdim=True)
         x_context = self.conv1(x)
-        x_context_g = self.conv2(self.avg(x))
+        x_context_g = self.avg(self.conv2(x))
         x_context = x_context.view(b, 1, h * w, 1)
         x_diff = -abs(x_context - x_context_g)
         x_diff = F.softmax(x_diff, dim=2)
