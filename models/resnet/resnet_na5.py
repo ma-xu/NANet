@@ -28,8 +28,7 @@ class NALayer(nn.Module):
         b, c, h, w = x.size()
 
         # Context Modeling
-        # x_context = torch.mean(x, 1, keepdim=True)
-        x_context = self.conv1(x)
+        x_context = torch.mean(x, 1, keepdim=True)
         x_context = x_context.view(b, 1, h * w, 1)
         x_diff = -abs(x_context - x_context.mean(dim=2, keepdim=True))
         x_diff = F.softmax(x_diff, dim=2)
