@@ -229,7 +229,8 @@ def main():
     if args.fp16:
         optimizer = FP16_Optimizer(optimizer,
                                    static_loss_scale=args.static_loss_scale,
-                                   dynamic_loss_scale=args.dynamic_loss_scale)
+                                   dynamic_loss_scale=args.dynamic_loss_scale,
+                                   verbose=False)
 
     # optionally resume from a checkpoint
     title = 'ImageNet-' + args.arch

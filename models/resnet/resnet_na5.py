@@ -18,19 +18,31 @@ class NALayer(nn.Module):
         # self.weight2 = Parameter(torch.zeros(1,in_channel,1,1))
         # self.bias2 = Parameter(torch.ones(1,in_channel,1,1))
         self.sig = nn.Sigmoid()
-        self.conv1 = nn.Conv2d(in_channel,1,kernel_size=1)
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(1,1,3,padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(1, 1, 3, padding=1)
+        )
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(1,1,3,padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(1, 1, 3, padding=1)
+        )
         # self.conv2 = nn.Conv2d(in_channel, 1, kernel_size=1)
         self.weight2 = Parameter(torch.zeros(1))
         self.bias2 = Parameter(torch.ones(1))
-        # self.avg = nn.AdaptiveAvgPool2d(1)
+        self.avg = nn.AdaptiveAvgPool2d(1)
 
     def forward(self, x):
         b, c, h, w = x.size()
 
         # Context Modeling
-        x_context = torch.mean(x, 1, keepdim=True)
-        x_context = x_context.view(b, 1, h * w, 1)
-        x_diff = -abs(x_context - x_context.mean(dim=2, keepdim=True))
+        x_mean = torch.mean(x, 1, keepdim=True)
+        x_context = self.conv1(x_mean)
+        x_context_g = self.avg(self.conv2(x_mean))
+        # x_context = x_context.view(b, 1, h * w, 1)
+        x_diff = -abs(x_context - x_context_g)
+        x_diff = x_diff.view(b, 1, h * w, 1)
         x_diff = F.softmax(x_diff, dim=2)
         x_new = x.view(b, 1, c, h * w)
         context = torch.matmul(x_new, x_diff)
