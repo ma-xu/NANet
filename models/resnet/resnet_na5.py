@@ -11,38 +11,42 @@ import math
 __all__ = ['na5_resnet18', 'na5_resnet34', 'na5_resnet50', 'na5_resnet101', 'na5_resnet152']
 
 class NALayer(nn.Module):
-    def __init__(self, groups = 64):
+    def __init__(self, in_channel):
         super(NALayer, self).__init__()
-        self.groups = groups
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.weight = Parameter(torch.zeros(1, groups, 1, 1))
-        self.bias = Parameter(torch.ones(1, groups, 1, 1))
+        # self.weight1 = Parameter(torch.zeros(1))
+        # self.bias1 = Parameter(torch.ones(1))
+        # self.weight2 = Parameter(torch.zeros(1,in_channel,1,1))
+        # self.bias2 = Parameter(torch.ones(1,in_channel,1,1))
         self.sig = nn.Sigmoid()
-        self.conv=nn.Sequential(
-            nn.Conv2d(1,1,3,padding=1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(1,1,3,padding=1)
-        )
+        self.conv1 = nn.Conv2d(in_channel,1,kernel_size=1)
+        self.weight2 = Parameter(torch.zeros(1))
+        self.bias2 = Parameter(torch.ones(1))
+        self.avg = nn.AdaptiveAvgPool2d(1)
 
-    def forward(self, input):  # (b, c, h, w)
+    def forward(self, x):
+        b, c, h, w = x.size()
 
-        b, c, h, w = input.size()
-        x = input.view(b * self.groups, -1, h, w)
-        xn = x - self.avg_pool(x)
-        xn = xn.sum(dim=1, keepdim=True)
-        xn = self.conv(xn)
-        t = xn.view(b * self.groups, -1)
+        # Context Modeling
+        # x_context = torch.mean(x, 1, keepdim=True)
+        x_context = self.conv1(x)
+        x_context_g = self.conv1(self.avg(x))
+        x_context = x_context.view(b, 1, h * w, 1)
+        x_diff = -abs(x_context - x_context_g)
+        x_diff = F.softmax(x_diff, dim=2)
+        x_new = x.view(b, 1, c, h * w)
+        context = torch.matmul(x_new, x_diff)
+        context = context.view(b, c)
 
-        t = t - t.mean(dim=1, keepdim=True)
-        std = t.std(dim=1, keepdim=True) + 1e-5
-        t = t / std
-        t = t.view(b, self.groups, h, w)
-        t = t * self.weight + self.bias
-        t = t.view(b * self.groups, 1, h, w)
-        x = x * self.sig(t)
-        x = x.view(b, c, h, w)
+        # Normalization
+        x_channel = context - context.mean(dim=1, keepdim=True)
+        std = x_channel.std(dim=1, keepdim=True) + 1e-5
+        x_channel = x_channel / std
+        x_channel = x_channel.view(b, c, 1, 1)
+        x_channel = x_channel * self.weight2 + self.bias2
+        x_channel = self.sig(x_channel)
+        x = x * x_channel
+
         return x
-
 
 
 def conv3x3(in_planes, out_planes, stride=1):
@@ -68,7 +72,7 @@ class BasicBlock(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes)
         self.downsample = downsample
         self.stride = stride
-        self.na  = NALayer()
+        self.na  = NALayer(planes*self.expansion)
 
     def forward(self, x):
         identity = x
@@ -101,7 +105,7 @@ class Bottleneck(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes)
         self.conv3 = conv1x1(planes, planes * self.expansion)
         self.bn3 = nn.BatchNorm2d(planes * self.expansion)
-        self.na  = NALayer()
+        self.na  = NALayer(planes*self.expansion)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
@@ -250,4 +254,4 @@ def demo():
     y = net(torch.randn(4, 3, 224,224)*100)
     print(y.size())
 
-# demo()
+demo()
