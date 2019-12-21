@@ -263,4 +263,10 @@ def demo():
     y = net(torch.randn(2, 3, 224,224))
     print(y.size())
 
-# demo()
+def demo2():
+    net = dis_resnet50(num_classes=1000)
+    net = net.cuda()
+    y = net(torch.randn(2, 3, 224,224).cuda())
+    print(y.size())
+
+demo()
