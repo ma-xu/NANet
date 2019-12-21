@@ -46,9 +46,6 @@ class DisLayer(nn.Module):
         # localtion_map = Variable(self.get_localation_map(b,w,h,self.local_num), requires_grad=False) # shape[b, w, h, local_num, 2]
         # localtion_map = self.localation_map[:,0:w,0:h,:,:].expand([b,w,h,self.local_num,2])
         localtion_map = self.get_location_mask(x,b,w,h,self.local_num)
-        print((self.normal_loc).device)
-        print(((self.normal_scal).diag_embed()).device)
-        print((multiNorm.scale_tril).device)
         pdf = multiNorm.log_prob(localtion_map*self.position_scal).exp()
         # print("PDF shape: {}".format(pdf.shape))
 
@@ -277,14 +274,20 @@ def dis_resnet152(pretrained=False, **kwargs):
 
 
 def demo():
-    net = dis_resnet50(num_classes=1000)
-    y = net(torch.randn(2, 3, 224,224))
-    print(y.size())
+    st = time.perf_counter()
+    for i in range(100):
+        net = dis_resnet50(num_classes=1000)
+        y = net(torch.randn(2, 3, 224,224))
+        print(y.size())
+    print("CPU time: {}".format(time.perf_counter() - st))
 
 def demo2():
-    net = dis_resnet50(num_classes=1000).cuda()
-    y = net(torch.randn(2, 3, 224,224).cuda())
-    print(y.size())
+    st = time.perf_counter()
+    for i in range(100):
+        net = dis_resnet50(num_classes=1000).cuda()
+        y = net(torch.randn(2, 3, 224,224).cuda())
+        print(y.size())
+    print("CPU time: {}".format(time.perf_counter() - st))
 
 demo()
 demo2()
