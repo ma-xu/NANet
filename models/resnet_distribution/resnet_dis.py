@@ -25,24 +25,26 @@ class DisLayer(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(in_channels=channel, out_channels=channel, kernel_size=5, groups=channel, padding=2),
         )
-
+        self.localation_map = self.get_localation_map(1,224,224,1)
+        # print(self.localation_map.shape)
 
     def forward(self, x):
         b,c,w,h = x.size()
         #Step1: embedding for each local point.
-        st = time.perf_counter()
+        # st = time.perf_counter()
         x_embedded = self.embedding(x)
-        print("Embedding time: {}".format(time.perf_counter() - st))
+        # print("Embedding time: {}".format(time.perf_counter() - st))
         # postion = torch.max(x_embedded)[1]
 
 
         # Step2： Distribution
         # TODO: Learn a local point for each channel.
-        st = time.perf_counter()
+        # st = time.perf_counter()
         multiNorm = MultivariateNormal(loc=self.normal_loc,scale_tril=self.normal_scal)
-        print("Generate Norm time: {}".format(time.perf_counter() - st))
-        localtion_map = self.get_localation_map(b,w,h,self.local_num) # shape[b, w, h, local_num, 2]
-        pdf = multiNorm.log_prob(localtion_map*self.position_scal).exp()
+        # print("Generate Norm time: {}".format(time.perf_counter() - st))
+        #localtion_map = self.get_localation_map(b,w,h,self.local_num) # shape[b, w, h, local_num, 2]
+        location_map = self.localation_map[:,0:w,0:h,:,:].expand([b,w,h,self.local_num,2])
+        pdf = multiNorm.log_prob(location_map*self.position_scal).exp()
         # print("PDF shape: {}".format(pdf.shape))
 
         #Step3: Value embedding

@@ -4,9 +4,10 @@ from torch.distributions.multivariate_normal import MultivariateNormal
 import torch.nn.functional as F
 
 w,h = 3,4
-local1 = torch.tensor([0,0])
-F.upsample(local1,size=w,mode ="bilinear")
-
+local1 = torch.tensor([[0,0],[1,1]])
+local2 = torch.tensor([[0,1],[0,1]])
+print(local1.shape)
+print(local1)
 
 
 # w,h=3,4
