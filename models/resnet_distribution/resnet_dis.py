@@ -17,7 +17,7 @@ class DisLayer(nn.Module):
         super(DisLayer, self).__init__()
         self.embedding = nn.Conv2d(in_channels=channel,out_channels=16,kernel_size=1)
         self.normal_loc = Parameter(torch.rand(local_num,2)) # 2 means weight, height
-        self.normal_scal = Parameter(torch.rand(local_num,2)).diag_embed()
+        self.normal_scal = Parameter(torch.rand(local_num,2))
         self.local_num = local_num
         self.position_scal = Parameter(torch.ones(1))
         self.value_embed = nn.Sequential(
@@ -41,13 +41,13 @@ class DisLayer(nn.Module):
         # Step2： Distribution
         # TODO: Learn a local point for each channel.
         # st = time.perf_counter()
-        multiNorm = MultivariateNormal(loc=self.normal_loc,scale_tril=self.normal_scal)
+        multiNorm = MultivariateNormal(loc=self.normal_loc,scale_tril=(self.normal_scal).diag_embed())
         # print("Generate Norm time: {}".format(time.perf_counter() - st))
         # localtion_map = Variable(self.get_localation_map(b,w,h,self.local_num), requires_grad=False) # shape[b, w, h, local_num, 2]
         # localtion_map = self.localation_map[:,0:w,0:h,:,:].expand([b,w,h,self.local_num,2])
         localtion_map = self.get_location_mask(x,b,w,h,self.local_num)
         print((self.normal_loc).device)
-        print((self.normal_scal).device)
+        print(((self.normal_scal).diag_embed()).device)
         print((multiNorm.scale_tril).device)
         pdf = multiNorm.log_prob(localtion_map*self.position_scal).exp()
         # print("PDF shape: {}".format(pdf.shape))
