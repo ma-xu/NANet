@@ -79,7 +79,7 @@ class DisLayer(nn.Module):
             increment = (x_value*pdf.unsqueeze(dim=1)).mean(dim=-1)
         # print("increment: {}".format(time.perf_counter() - st))
         time6 = time.perf_counter() - st
-        timelist = [time1,time2,time3,time4,time5,time6]
+        timelist = torch.Tensor([time1,time2,time3,time4,time5,time6])
         print(round(timelist/min(timelist),3))
 
         print("================NEXT channel: {}=============================".format(self.channel))
