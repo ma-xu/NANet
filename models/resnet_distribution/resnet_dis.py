@@ -29,6 +29,7 @@ class DisLayer(nn.Module):
         # print(self.localation_map.shape)
 
     def forward(self, x):
+
         b,c,w,h = x.size()
         #Step1: embedding for each local point.
         # st = time.perf_counter()
@@ -42,8 +43,9 @@ class DisLayer(nn.Module):
         # st = time.perf_counter()
         multiNorm = MultivariateNormal(loc=self.normal_loc,scale_tril=self.normal_scal)
         # print("Generate Norm time: {}".format(time.perf_counter() - st))
-        localtion_map = Variable(self.get_localation_map(b,w,h,self.local_num), requires_grad=False) # shape[b, w, h, local_num, 2]
+        # localtion_map = Variable(self.get_localation_map(b,w,h,self.local_num), requires_grad=False) # shape[b, w, h, local_num, 2]
         # localtion_map = self.localation_map[:,0:w,0:h,:,:].expand([b,w,h,self.local_num,2])
+        localtion_map = self.get_location_mask(x,b,w,h,self.local_num)
         pdf = multiNorm.log_prob(localtion_map*self.position_scal).exp()
         # print("PDF shape: {}".format(pdf.shape))
 
@@ -58,12 +60,18 @@ class DisLayer(nn.Module):
 
         return x+increment
 
-    def get_localation_map(self,b,w,h,local_num):
-        ww = torch.arange(0, w).view(1, w)
-        hh = torch.arange(0, h).view(h, 1)
-        position = torch.broadcast_tensors(ww, hh)
-        loc_map = torch.cat([position[1].unsqueeze(dim=-1), position[0].unsqueeze(dim=-1)], dim=-1)
-        return loc_map.expand(b,local_num, w, h, 2).permute(0,2,3,1,4)
+    def get_location_mask(self,x,b,w,h,local_num):
+        mask = (x[0, 0, :, :] != 999).nonzero()
+        mask = mask.reshape(w, h, 2)
+        return mask.expand(b,local_num, w, h, 2).permute(0,2,3,1,4)
+
+
+    # def get_localation_map(self,b,w,h,local_num):
+    #     ww = torch.arange(0, w).view(1, w)
+    #     hh = torch.arange(0, h).view(h, 1)
+    #     position = torch.broadcast_tensors(ww, hh)
+    #     loc_map = torch.cat([position[1].unsqueeze(dim=-1), position[0].unsqueeze(dim=-1)], dim=-1)
+    #     return loc_map.expand(b,local_num, w, h, 2).permute(0,2,3,1,4)
 
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
@@ -277,4 +285,4 @@ def demo2():
     print(y.size())
 
 demo()
-demo2()
+# demo2()
