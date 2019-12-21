@@ -33,7 +33,7 @@ class DisLayer(nn.Module):
         b,c,w,h = x.size()
         #Step1: embedding for each local point.
         st = time.perf_counter()
-        for i in range(100):
+        for i in range(1000):
             x_embedded = self.embedding(x)
         print("x_embedded = self.embedding(x): {}".format(time.perf_counter() - st))
         # postion = torch.max(x_embedded)[1]
@@ -43,34 +43,35 @@ class DisLayer(nn.Module):
         # TODO: Learn a local point for each channel.
         # st = time.perf_counter()
         st = time.perf_counter()
-        for i in range(100):
+        for i in range(1000):
             multiNorm = MultivariateNormal(loc=self.normal_loc,scale_tril=(self.normal_scal).diag_embed())
         print("multiNorm = MultivariateNormal: {}".format(time.perf_counter() - st))
         # print("Generate Norm time: {}".format(time.perf_counter() - st))
         # localtion_map = Variable(self.get_localation_map(b,w,h,self.local_num), requires_grad=False) # shape[b, w, h, local_num, 2]
         # localtion_map = self.localation_map[:,0:w,0:h,:,:].expand([b,w,h,self.local_num,2])
         st = time.perf_counter()
-        for i in range(100):
+        for i in range(1000):
             localtion_map = self.get_location_mask(x,b,w,h,self.local_num)
         print("localtion_map = self.get_location_mask: {}".format(time.perf_counter() - st))
         st = time.perf_counter()
-        for i in range(100):
+        for i in range(1000):
             pdf = multiNorm.log_prob(localtion_map*self.position_scal).exp()
         print("pdf = multiNorm.log_prob: {}".format(time.perf_counter() - st))
 
         #Step3: Value embedding
         st = time.perf_counter()
-        for i in range(100):
+        for i in range(1000):
             x_value = x.expand(self.local_num,b,c,w,h).reshape(self.local_num*b,c,w,h)
             x_value = self.value_embed(x_value).reshape(self.local_num,b,c,w,h).permute(1,2,3,4,0)
         print("Value embedding: {}".format(time.perf_counter() - st))
 
         #Step4: embeded_Value X possibility_density
         st = time.perf_counter()
-        for i in range(100):
+        for i in range(1000):
             increment = (x_value*pdf.unsqueeze(dim=1)).mean(dim=-1)
         print("increment: {}".format(time.perf_counter() - st))
 
+        print("================NEXT=============================")
         return x+increment
 
     def get_location_mask(self,x,b,w,h,local_num):
@@ -295,12 +296,9 @@ def demo():
     print("CPU time: {}".format(time.perf_counter() - st))
 
 def demo2():
-    st = time.perf_counter()
-    for i in range(100):
-        net = dis_resnet50(num_classes=1000).cuda()
-        y = net(torch.randn(2, 3, 224,224).cuda())
-        print(y.size())
-    print("CPU time: {}".format(time.perf_counter() - st))
+    net = dis_resnet50(num_classes=1000).cuda()
+    y = net(torch.randn(2, 3, 224,224).cuda())
+    print(y.size())
 
 # demo()
 demo2()
