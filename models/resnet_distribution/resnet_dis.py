@@ -25,7 +25,7 @@ class DisLayer(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(in_channels=channel, out_channels=channel, kernel_size=5, groups=channel, padding=2),
         )
-        self.localation_map = self.get_localation_map(1,224,224,1)
+        # self.localation_map = self.get_localation_map(1,224,224,1)
         # print(self.localation_map.shape)
 
     def forward(self, x):
@@ -42,9 +42,9 @@ class DisLayer(nn.Module):
         # st = time.perf_counter()
         multiNorm = MultivariateNormal(loc=self.normal_loc,scale_tril=self.normal_scal)
         # print("Generate Norm time: {}".format(time.perf_counter() - st))
-        #localtion_map = self.get_localation_map(b,w,h,self.local_num) # shape[b, w, h, local_num, 2]
-        location_map = self.localation_map[:,0:w,0:h,:,:].expand([b,w,h,self.local_num,2])
-        pdf = multiNorm.log_prob(location_map*self.position_scal).exp()
+        localtion_map = Variable(self.get_localation_map(b,w,h,self.local_num), requires_grad=False) # shape[b, w, h, local_num, 2]
+        # localtion_map = self.localation_map[:,0:w,0:h,:,:].expand([b,w,h,self.local_num,2])
+        pdf = multiNorm.log_prob(localtion_map*self.position_scal).exp()
         # print("PDF shape: {}".format(pdf.shape))
 
         #Step3: Value embedding
