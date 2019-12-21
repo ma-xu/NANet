@@ -48,6 +48,8 @@ class DisLayer(nn.Module):
         localtion_map = self.get_location_mask(x,b,w,h,self.local_num)
         print(localtion_map.device)
         print((self.position_scal).device)
+        print((localtion_map*self.position_scal).device)
+        print((multiNorm.loc).device)
         pdf = multiNorm.log_prob(localtion_map*self.position_scal).exp()
         # print("PDF shape: {}".format(pdf.shape))
 
