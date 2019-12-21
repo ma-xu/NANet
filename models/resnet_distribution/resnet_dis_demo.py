@@ -80,7 +80,7 @@ class DisLayer(nn.Module):
         # print("increment: {}".format(time.perf_counter() - st))
         time6 = time.perf_counter() - st
         timelist = torch.Tensor([time1,time2,time3,time4,time5,time6])
-        print(round(timelist/min(timelist),3))
+        print(timelist/min(timelist))
 
         print("================NEXT channel: {}=============================".format(self.channel))
         return x+increment
