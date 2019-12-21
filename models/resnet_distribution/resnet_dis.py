@@ -7,6 +7,7 @@ from torch.nn import init
 from torch.autograd import Variable
 from collections import OrderedDict
 import math
+import time
 from torch.distributions.multivariate_normal import MultivariateNormal
 
 __all__ = ['dis_resnet18', 'dis_resnet34', 'dis_resnet50', 'dis_resnet101', 'dis_resnet152']
@@ -29,13 +30,17 @@ class DisLayer(nn.Module):
     def forward(self, x):
         b,c,w,h = x.size()
         #Step1: embedding for each local point.
+        st = time.perf_counter()
         x_embedded = self.embedding(x)
+        print("Embedding time: {}".format(time.perf_counter() - st))
         # postion = torch.max(x_embedded)[1]
 
 
         # Step2： Distribution
         # TODO: Learn a local point for each channel.
+        st = time.perf_counter()
         multiNorm = MultivariateNormal(loc=self.normal_loc,scale_tril=self.normal_scal)
+        print("Generate Norm time: {}".format(time.perf_counter() - st))
         localtion_map = self.get_localation_map(b,w,h,self.local_num) # shape[b, w, h, local_num, 2]
         pdf = multiNorm.log_prob(localtion_map*self.position_scal).exp()
         # print("PDF shape: {}".format(pdf.shape))
