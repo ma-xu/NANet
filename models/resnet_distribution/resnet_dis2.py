@@ -49,6 +49,7 @@ class DisLayer(nn.Module):
         localtion_map = self.get_location_mask(x,b,w,h,self.local_num) # shape[w, h, b,local_num, 2]
         pdf = multiNorm.log_prob(localtion_map*self.position_scal).exp() # shape [w,h,b,local_num]
         pdf = pdf.permute(2,0,1,3).unsqueeze(dim=1) #shape [b,1,w,h,local_num]
+        pdf[pdf != pdf] = 0 # Remove NaN due to precision.
 
         #Step3: Value embedding
         x_value = x.expand(self.local_num,b,c,w,h).reshape(self.local_num*b,c,w,h)
