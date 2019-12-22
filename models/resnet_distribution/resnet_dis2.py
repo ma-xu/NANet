@@ -15,10 +15,9 @@ __all__ = ['dis_resnet18', 'dis_resnet34', 'dis_resnet50', 'dis_resnet101', 'dis
 class DisLayer(nn.Module):
     def __init__(self, channel, reduction=16, local_num=8):
         super(DisLayer, self).__init__()
-        self.channel = channel
         self.embedding = nn.Conv2d(in_channels=channel,out_channels=local_num,kernel_size=1)
-        self.normal_loc = Parameter(torch.rand(local_num,2)) # 2 means weight, height
-        self.normal_scal = Parameter(torch.rand(local_num,2))
+        # self.normal_loc = Parameter(torch.rand(local_num,2)) # 2 means weight, height
+        self.normal_scal = Parameter(torch.rand(2))
         self.local_num = local_num
         self.position_scal = Parameter(torch.ones(1))
         self.value_embed = nn.Sequential(
@@ -28,67 +27,43 @@ class DisLayer(nn.Module):
         )
         # self.localation_map = self.get_localation_map(1,224,224,1)
         # print(self.localation_map.shape)
+        self.max_pooling = nn.AdaptiveMaxPool2d(1)
 
     def forward(self, x):
 
         b,c,w,h = x.size()
         #Step1: embedding for each local point.
-        st = time.perf_counter()
-        for i in range(1000):
-            x_embedded = self.embedding(x)
-        # print("x_embedded = self.embedding(x): {}".format(time.perf_counter() - st))
-        time1 = time.perf_counter() - st
+        x_embedded = self.embedding(x)
+
+        # Learning the location. Shape: [b,loc_number,2]
+        norm_loc = (x_embedded == self.max_pooling(x_embedded)).nonzero()
+        norm_loc = (norm_loc.view(b,self.local_num,4))[:,:,2:4]
+        # Learning the scale_tril. Shape: [b,loc_number,2,2]
+        aa = x_embedded.mean(dim=3).std(dim=-1,keepdim=True)
+        bb = x_embedded.mean(dim=2).std(dim=-1,keepdim=True)
+        scale_tril = (torch.cat([aa,bb],dim=-1)*self.normal_scal).diag_embed()
 
         # Step2： Distribution
         # TODO: Learn a local point for each channel.
-        # st = time.perf_counter()
-        st = time.perf_counter()
-        for i in range(1000):
-            multiNorm = MultivariateNormal(loc=self.normal_loc,scale_tril=(self.normal_scal).diag_embed())
-        # print("multiNorm = MultivariateNormal: {}".format(time.perf_counter() - st))
-        time2 = time.perf_counter() - st
-
-
-
-        st = time.perf_counter()
-        for i in range(1000):
-            localtion_map = self.get_location_mask(x,b,w,h,self.local_num)
-        # print("localtion_map = self.get_location_mask: {}".format(time.perf_counter() - st))
-        time3 = time.perf_counter() - st
-
-
-        st = time.perf_counter()
-        for i in range(1000):
-            pdf = multiNorm.log_prob(localtion_map*self.position_scal).exp()
-        # print("pdf = multiNorm.log_prob: {}".format(time.perf_counter() - st))
-        time4 = time.perf_counter() - st
-
+        multiNorm = MultivariateNormal(loc=norm_loc*self.position_scal,scale_tril=scale_tril)
+        localtion_map = self.get_location_mask(x,b,w,h,self.local_num) # shape[w, h, b,local_num, 2]
+        pdf = multiNorm.log_prob(localtion_map*self.position_scal).exp() # shape [w,h,b,local_num]
+        pdf = pdf.permute(2,0,1,3).unsqueeze(dim=1) #shape [b,1,w,h,local_num]
 
         #Step3: Value embedding
-        st = time.perf_counter()
-        for i in range(1000):
-            x_value = x.expand(self.local_num,b,c,w,h).reshape(self.local_num*b,c,w,h)
-            x_value = self.value_embed(x_value).reshape(self.local_num,b,c,w,h).permute(1,2,3,4,0)
-        # print("Value embedding: {}".format(time.perf_counter() - st))
-        time5 = time.perf_counter() - st
-
+        x_value = x.expand(self.local_num,b,c,w,h).reshape(self.local_num*b,c,w,h)
+        x_value = self.value_embed(x_value).reshape(self.local_num,b,c,w,h).permute(1,2,3,4,0) # shape [b,c,w,h,local_num]
+        # print("x_value shape: {}".format(x_value.shape))
 
         #Step4: embeded_Value X possibility_density
-        st = time.perf_counter()
-        for i in range(1000):
-            increment = (x_value*pdf.unsqueeze(dim=1)).mean(dim=-1)
-        # print("increment: {}".format(time.perf_counter() - st))
-        time6 = time.perf_counter() - st
-        timelist = torch.Tensor([time1,time2,time3,time4,time5,time6])
-        print(timelist/min(timelist))
+        increment = (x_value*pdf).mean(dim=-1)
 
-        print("================NEXT channel: {}=============================".format(self.channel))
         return x+increment
 
     def get_location_mask(self,x,b,w,h,local_num):
-        mask = (x[0, 0, :, :] != 999).nonzero()
+        mask = (x[0, 0, :, :] != -999).nonzero()
         mask = mask.reshape(w, h, 2)
-        return mask.expand(b,local_num, w, h, 2).permute(0,2,3,1,4)
+        return mask.expand(b,local_num, w, h, 2).permute(2,3,0,1,4)
 
 
     # def get_localation_map(self,b,w,h,local_num):
@@ -307,9 +282,12 @@ def demo():
     print("CPU time: {}".format(time.perf_counter() - st))
 
 def demo2():
-    net = dis_resnet50(num_classes=1000).cuda()
-    y = net(torch.randn(2, 3, 224,224).cuda())
-    print(y.size())
+    st = time.perf_counter()
+    for i in range(100):
+        net = dis_resnet50(num_classes=1000).cuda()
+        y = net(torch.randn(2, 3, 224,224).cuda())
+        print(y.size())
+    print("CPU time: {}".format(time.perf_counter() - st))
 
-# demo()
+demo()
 demo2()
