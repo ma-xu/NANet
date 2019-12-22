@@ -278,7 +278,7 @@ def demo():
     for i in range(100):
         net = dis_resnet50(num_classes=1000)
         y = net(torch.randn(2, 3, 224,224))
-        print(y.size())
+        print("epoch: {},  shape: {}".format(i,y.size()))
     print("CPU time: {}".format(time.perf_counter() - st))
 
 def demo2():
@@ -286,7 +286,7 @@ def demo2():
     for i in range(100):
         net = dis_resnet50(num_classes=1000).cuda()
         y = net(torch.randn(2, 3, 224,224).cuda())
-        print(y.size())
+        print("epoch: {},  shape: {}".format(i,y.size()))
     print("CPU time: {}".format(time.perf_counter() - st))
 
 demo()
