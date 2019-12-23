@@ -59,8 +59,8 @@ class DisLayer(nn.Module):
 
         #Step4: embeded_Value X possibility_density
         increment = (x_value*pdf).mean(dim=-1)
-        print(increment)
-        x = increment + x
+        # print(increment)
+        y = increment + x
         return x
 
     def get_location_mask(self,x,b,w,h,local_num):
