@@ -61,7 +61,7 @@ class DisLayer(nn.Module):
         increment = (x_value*pdf).mean(dim=-1)
   
 
-        return x+increment
+        return (x+increment)
 
     def get_location_mask(self,x,b,w,h,local_num):
         mask = (x[0, 0, :, :] != -999).nonzero()
@@ -299,5 +299,5 @@ def demo2():
         print("Allocated: {}".format(torch.cuda.memory_allocated()/(1e6)))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-# demo()
-demo2()
+demo()
+# demo2()
