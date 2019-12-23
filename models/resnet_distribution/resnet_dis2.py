@@ -10,7 +10,7 @@ import math
 import time
 from torch.distributions.multivariate_normal import MultivariateNormal
 
-__all__ = ['dis_resnet18', 'dis_resnet34', 'dis_resnet50', 'dis_resnet101', 'dis_resnet152']
+__all__ = ['dis2_resnet18', 'dis2_resnet34', 'dis2_resnet50', 'dis2_resnet101', 'dis2_resnet152']
 
 class DisLayer(nn.Module):
     def __init__(self, channel, reduction=16, local_num=8):
@@ -227,7 +227,7 @@ class ResNet(nn.Module):
         return x
 
 
-def dis_resnet18(pretrained=False, **kwargs):
+def dis2_resnet18(pretrained=False, **kwargs):
     """Constructs a ResNet-18 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -236,7 +236,7 @@ def dis_resnet18(pretrained=False, **kwargs):
     return model
 
 
-def dis_resnet34(pretrained=False, **kwargs):
+def dis2_resnet34(pretrained=False, **kwargs):
     """Constructs a ResNet-34 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -245,7 +245,7 @@ def dis_resnet34(pretrained=False, **kwargs):
     return model
 
 
-def dis_resnet50(pretrained=False, **kwargs):
+def dis2_resnet50(pretrained=False, **kwargs):
     """Constructs a ResNet-50 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -254,7 +254,7 @@ def dis_resnet50(pretrained=False, **kwargs):
     return model
 
 
-def dis_resnet101(pretrained=False, **kwargs):
+def dis2_resnet101(pretrained=False, **kwargs):
     """Constructs a ResNet-101 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -263,7 +263,7 @@ def dis_resnet101(pretrained=False, **kwargs):
     return model
 
 
-def dis_resnet152(pretrained=False, **kwargs):
+def dis2_resnet152(pretrained=False, **kwargs):
     """Constructs a ResNet-152 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -277,7 +277,7 @@ def dis_resnet152(pretrained=False, **kwargs):
 def demo():
     st = time.perf_counter()
     for i in range(100):
-        net = dis_resnet50(num_classes=1000)
+        net = dis2_resnet50(num_classes=1000)
         y = net(torch.randn(2, 3, 224,224))
         print("epoch: {},  shape: {}".format(i,y.size()))
     print("CPU time: {}".format(time.perf_counter() - st))
@@ -285,10 +285,10 @@ def demo():
 def demo2():
     st = time.perf_counter()
     for i in range(100):
-        net = dis_resnet50(num_classes=1000).cuda()
+        net = dis2_resnet50(num_classes=1000).cuda()
         y = net(torch.randn(2, 3, 224,224).cuda())
         print("epoch: {},  shape: {}".format(i,y.size()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-demo()
-demo2()
+# demo()
+# demo2()
