@@ -47,7 +47,7 @@ class DisLayer(nn.Module):
         pdf = multiNorm.log_prob(localtion_map*self.position_scal).exp() # shape [w,h,b,local_num]
         pdf = pdf.permute(2,0,1,3).unsqueeze(dim=1) #shape [b,1,w,h,local_num]
         pdf[pdf != pdf] = 0 # Remove NaN due to precision.
-
+        pdf = pdf.clone()
 
 
         #Step3: Value embedding
@@ -60,10 +60,10 @@ class DisLayer(nn.Module):
         #Step4: embeded_Value X possibility_density
         increment = (x_value*pdf).mean(dim=-1)
 
-        return x+increment.clone()
+        return x+increment
 
     def get_location_mask(self,x,b,w,h,local_num):
-        mask = (x[0, 0, :, :].clone() != -999).nonzero()
+        mask = (x[0, 0, :, :] != -999).nonzero()
         mask = mask.reshape(w, h, 2)
         return mask.expand(b,local_num, w, h, 2).permute(2,3,0,1,4)
 
