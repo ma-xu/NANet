@@ -63,7 +63,7 @@ class DisLayer(nn.Module):
         return x+increment.clone()
 
     def get_location_mask(self,x,b,w,h,local_num):
-        mask = (x[0, 0, :, :] != -999).nonzero()
+        mask = (x[0, 0, :, :].clone() != -999).nonzero()
         mask = mask.reshape(w, h, 2)
         return mask.expand(b,local_num, w, h, 2).permute(2,3,0,1,4)
 
