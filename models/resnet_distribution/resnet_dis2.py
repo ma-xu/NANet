@@ -36,8 +36,7 @@ class DisLayer(nn.Module):
         x_embedded = self.embedding(x)
 
         # Learning the location. Shape: [b,loc_number,2]
-        norm_loc = (x_embedded == self.max_pooling(x_embedded)).nonzero()
-        norm_loc = (norm_loc.view(b,self.local_num,4))[:,:,2:4]
+        norm_loc = self.get_max_index(x_embedded)
         # Learning the scale_tril. Shape: [b,loc_number,2,2]
         aa = x_embedded.mean(dim=3).std(dim=-1,keepdim=True)
         bb = x_embedded.mean(dim=2).std(dim=-1,keepdim=True)
@@ -66,6 +65,12 @@ class DisLayer(nn.Module):
         mask = mask.reshape(w, h, 2)
         return mask.expand(b,local_num, w, h, 2).permute(2,3,0,1,4)
 
+
+    def get_max_index(self,x):
+        # x shape: [b,c,w,h]
+        index1 = (x.max(2)[0]).max(-1, keepdim=True)[1]
+        index2 = (x.max(3)[0]).max(-1, keepdim=True)[1]
+        return torch.cat([index2, index1], dim=-1)
 
     # def get_localation_map(self,b,w,h,local_num):
     #     ww = torch.arange(0, w).view(1, w)
@@ -290,5 +295,5 @@ def demo2():
         print("epoch: {},  shape: {}".format(i,y.size()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-# demo()
+demo()
 # demo2()
