@@ -61,8 +61,7 @@ class DisLayer(nn.Module):
         increment = (x_value*pdf).mean(dim=-1)
   
 
-        # return x+increment
-        return x
+        return x+increment
 
     def get_location_mask(self,x,b,w,h,local_num):
         mask = (x[0, 0, :, :] != -999).nonzero()
