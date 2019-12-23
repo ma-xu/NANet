@@ -11,11 +11,13 @@ max_pooling2 = nn.AdaptiveMaxPool2d(1,return_indices=True)
 
 
 
-demo = torch.rand(2,2,5,6)
+demo = torch.rand(1,2,3,3)
+demo2 = demo.repeat(1,2,1,1)
+print(demo2)
 
-norm_loc = (demo == max_pooling(demo)).nonzero()
-norm_loc = (norm_loc.view(2,2,4))[:,:,2:4]
-print(norm_loc)
+# norm_loc = (demo == max_pooling(demo)).nonzero()
+# norm_loc = (norm_loc.view(2,2,4))[:,:,2:4]
+# print(norm_loc)
 
 # mmm,ind = max_pooling2(demo)
 # print(ind)

@@ -51,8 +51,11 @@ class DisLayer(nn.Module):
 
 
         #Step3: Value embedding
-        x_value = x.expand(self.local_num,b,c,w,h).reshape(self.local_num*b,c,w,h)
-        x_value = self.value_embed(x_value).reshape(self.local_num,b,c,w,h).permute(1,2,3,4,0) # shape [b,c,w,h,local_num]
+        # x_value = x.expand(self.local_num,b,c,w,h).reshape(self.local_num*b,c,w,h)
+        # x_value = self.value_embed(x_value).reshape(self.local_num,b,c,w,h).permute(1,2,3,4,0) # shape [b,c,w,h,local_num]
+        # Value Embedding: Option 1: using query embedding and expand 1 to c channels
+        x_value = x_embedded.permute(0,2,3,1).unsqueeze(1).repeat(1,c,1,1,1)
+
 
         #Step4: embeded_Value X possibility_density
         increment = (x_value*pdf).mean(dim=-1)
