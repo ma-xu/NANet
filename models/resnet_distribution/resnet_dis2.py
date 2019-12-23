@@ -21,9 +21,7 @@ class DisLayer(nn.Module):
         self.local_num = local_num
         self.position_scal = Parameter(torch.ones(1))
         self.value_embed = nn.Sequential(
-            nn.Conv2d(in_channels=channel,out_channels=channel,kernel_size=5,groups=channel,padding=2),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(in_channels=channel, out_channels=channel, kernel_size=5, groups=channel, padding=2),
+            nn.Conv2d(in_channels=channel,out_channels=channel,kernel_size=5,groups=channel,padding=2)
         )
         # self.localation_map = self.get_localation_map(1,224,224,1)
         # print(self.localation_map.shape)
@@ -58,9 +56,8 @@ class DisLayer(nn.Module):
 
         #Step4: embeded_Value X possibility_density
         increment = (x_value*pdf).mean(dim=-1)
-        print(increment.shape)
 
-        return x*F.sigmoid(increment)
+        return x+increment
 
     def get_location_mask(self,x,b,w,h,local_num):
         mask = (x[0, 0, :, :] != -999).nonzero()
