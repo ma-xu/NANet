@@ -51,9 +51,10 @@ class DisLayer(nn.Module):
         pdf[pdf != pdf] = 0 # Remove NaN due to precision.
 
 
-        """
+
         #Step3: Value embedding
         x_value = x.expand(self.local_num,b,c,w,h).reshape(self.local_num*b,c,w,h)
+        """
         x_value = self.value_embed(x_value).reshape(self.local_num,b,c,w,h).permute(1,2,3,4,0) # shape [b,c,w,h,local_num]
 
 
