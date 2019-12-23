@@ -20,9 +20,9 @@ class DisLayer(nn.Module):
         self.normal_scal = Parameter(torch.rand(2))
         self.local_num = local_num
         self.position_scal = Parameter(torch.ones(1))
-        self.value_embed = nn.Sequential(
-            nn.Conv2d(in_channels=channel,out_channels=channel,kernel_size=5,groups=channel,padding=2)
-        )
+        # self.value_embed = nn.Sequential(
+        #     nn.Conv2d(in_channels=channel,out_channels=channel,kernel_size=5,groups=channel,padding=2)
+        # )
         # self.localation_map = self.get_localation_map(1,224,224,1)
         # print(self.localation_map.shape)
         self.max_pooling = nn.AdaptiveMaxPool2d(1)
