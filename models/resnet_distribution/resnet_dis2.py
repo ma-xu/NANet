@@ -47,14 +47,13 @@ class DisLayer(nn.Module):
         pdf = multiNorm.log_prob(localtion_map*self.position_scal).exp() # shape [w,h,b,local_num]
         pdf = pdf.permute(2,0,1,3).unsqueeze(dim=1) #shape [b,1,w,h,local_num]
         pdf[pdf != pdf] = 0 # Remove NaN due to precision.
-        pdf = pdf.clone()
 
 
         #Step3: Value embedding
         # x_value = x.expand(self.local_num,b,c,w,h).reshape(self.local_num*b,c,w,h)
         # x_value = self.value_embed(x_value).reshape(self.local_num,b,c,w,h).permute(1,2,3,4,0) # shape [b,c,w,h,local_num]
         # Value Embedding: Option 1: using query embedding and expand 1 to c channels
-        x_value = x_embedded.permute(0,2,3,1).unsqueeze(1).repeat(1,c,1,1,1)
+        x_value = x_embedded.permute(0,2,3,1).unsqueeze(1).repeat(1,c,1,1,1).clone()
 
 
         #Step4: embeded_Value X possibility_density
