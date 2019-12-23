@@ -60,7 +60,9 @@ class DisLayer(nn.Module):
         #Step4: embeded_Value X possibility_density
         increment = F.relu((x_value*pdf).mean(dim=-1),inplace=True)
         # print(increment)
+        print("X shape:{},   Inc shape: {}".format(x.shape, increment.shape))
         x = increment + x
+        print("New X shape:{}".format(x.shape))
         return x
 
     def get_location_mask(self,x,b,w,h,local_num):
