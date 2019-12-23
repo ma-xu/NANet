@@ -7,6 +7,7 @@ from torch.nn import init
 from torch.autograd import Variable
 from collections import OrderedDict
 import math
+import time
 
 __all__ = ['gc_resnet18', 'gc_resnet34', 'gc_resnet50', 'gc_resnet101', 'gc_resnet152']
 
@@ -339,3 +340,15 @@ def demo():
     print(y.size())
 
 demo()
+
+def demo2():
+    st = time.perf_counter()
+    for i in range(100):
+        net = gc_resnet50(num_classes=1000).cuda()
+        y = net(torch.randn(2, 3, 224,224).cuda())
+        print("epoch: {},  shape: {}".format(i,y.size()))
+        print("Allocated: {}".format(torch.cuda.memory_allocated()/(1e6)))
+    print("GPU time: {}".format(time.perf_counter() - st))
+
+# demo()
+demo2()
