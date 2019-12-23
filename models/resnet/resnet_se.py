@@ -26,8 +26,7 @@ class SELayer(nn.Module):
         b, c, _, _ = x.size()
         y = self.avg_pool(x).view(b, c)
         y = self.fc(y).view(b, c, 1, 1)
-        # return x * y
-        return x
+        return x * y
 
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
@@ -247,4 +246,4 @@ def demo2():
     print("GPU time: {}".format(time.perf_counter() - st))
 
 # demo()
-demo2()
+# demo2()
