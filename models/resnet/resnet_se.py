@@ -243,7 +243,7 @@ def demo2():
         y = net(torch.randn(2, 3, 224,224).cuda())
         print(y.size())
         print("Allocated: {}".format(torch.cuda.memory_allocated()))
-    print("CPU time: {}".format(time.perf_counter() - st))
+    print("GPU time: {}".format(time.perf_counter() - st))
 
 demo()
 demo2()
