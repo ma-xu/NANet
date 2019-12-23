@@ -130,7 +130,7 @@ class ContextBlock2d(nn.Module):
             channel_add_term = self.channel_add_conv(context)
             out = out + channel_add_term
 
-        return out
+        return x
 
 
 
