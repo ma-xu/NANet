@@ -13,7 +13,7 @@ from torch.distributions.multivariate_normal import MultivariateNormal
 __all__ = ['dis2_resnet18', 'dis2_resnet34', 'dis2_resnet50', 'dis2_resnet101', 'dis2_resnet152']
 
 class DisLayer(nn.Module):
-    def __init__(self, channel, reduction=16, local_num=8):
+    def __init__(self, channel, reduction=16, local_num=16):
         super(DisLayer, self).__init__()
         self.embedding = nn.Conv2d(in_channels=channel,out_channels=local_num,kernel_size=1)
         # self.normal_loc = Parameter(torch.rand(local_num,2)) # 2 means weight, height
