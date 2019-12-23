@@ -59,7 +59,7 @@ class DisLayer(nn.Module):
 
         #Step4: embeded_Value X possibility_density
         increment = F.relu((x_value*pdf).mean(dim=-1),inplace=True)
-        increment = 0
+        increment = torch.rand(x.size()).cuda()
         # print(increment)
         return increment + x
 
