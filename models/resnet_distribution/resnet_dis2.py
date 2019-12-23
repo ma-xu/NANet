@@ -295,5 +295,5 @@ def demo2():
         print("epoch: {},  shape: {}".format(i,y.size()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-demo()
-demo2()
+# demo()
+# demo2()
