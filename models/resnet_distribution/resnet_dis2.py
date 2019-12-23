@@ -58,9 +58,8 @@ class DisLayer(nn.Module):
 
 
         #Step4: embeded_Value X possibility_density
-        increment = F.relu((x_value*pdf).mean(dim=-1),inplace=True)
-        increment = torch.rand(x.size()).cuda()
-        # print(increment)
+        increment = (x_value*pdf).mean(dim=-1)
+        increment = (x_value * pdf)[:,:,:,:,0]
         return increment + x
 
     def get_location_mask(self,x,b,w,h,local_num):
