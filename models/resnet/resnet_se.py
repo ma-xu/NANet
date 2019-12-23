@@ -242,7 +242,8 @@ def demo2():
         net = se_resnet50(num_classes=1000).cuda()
         y = net(torch.randn(2, 3, 224,224).cuda())
         print(y.size())
+        print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("CPU time: {}".format(time.perf_counter() - st))
 
-# demo()
-# demo2()
+demo()
+demo2()

@@ -293,7 +293,8 @@ def demo2():
         net = dis2_resnet50(num_classes=1000).cuda()
         y = net(torch.randn(2, 3, 224,224).cuda())
         print("epoch: {},  shape: {}".format(i,y.size()))
+        print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-# demo()
-# demo2()
+demo()
+demo2()
