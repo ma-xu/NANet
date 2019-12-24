@@ -6,3 +6,5 @@ from .resnet import *
 from .mobilenet import *
 
 from .resnet_distribution import *
+
+from .resnet_multiregion import *

@@ -1,8 +1,3 @@
-"""
-Not converge, NA loss.
-Training speed is about 3.xxs/batch, too slow.
-"""
-
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
 from torch.nn.parameter import Parameter
@@ -13,77 +8,35 @@ from torch.autograd import Variable
 from collections import OrderedDict
 import math
 import time
-from torch.distributions.multivariate_normal import MultivariateNormal
 
-__all__ = ['dis2_resnet18', 'dis2_resnet34', 'dis2_resnet50', 'dis2_resnet101', 'dis2_resnet152']
+__all__ = ['mr_resnet18', 'mr_resnet34', 'mr_resnet50', 'mr_resnet101', 'mr_resnet152']
 
-class DisLayer(nn.Module):
-    def __init__(self, channel, reduction=16, local_num=1):
-        super(DisLayer, self).__init__()
-        self.embedding = nn.Conv2d(in_channels=channel,out_channels=local_num,kernel_size=1)
-        # self.normal_loc = Parameter(torch.rand(local_num,2)) # 2 means weight, height
-        self.normal_scal = Parameter(torch.rand(2))
-        self.local_num = local_num
-        self.position_scal = Parameter(torch.ones(1))
-        # self.value_embed = nn.Sequential(
-        #     nn.Conv2d(in_channels=channel,out_channels=channel,kernel_size=5,groups=channel,padding=2)
-        # )
-        # self.localation_map = self.get_localation_map(1,224,224,1)
-        # print(self.localation_map.shape)
-        self.max_pooling = nn.AdaptiveMaxPool2d(1)
+class MRLayer(nn.Module):
+    def __init__(self, channel, reduction = 16):
+        super(MRLayer, self).__init__()
+        self.f_q = nn.Conv2d(channel, channel//reduction, 1)
+        self.f_v = nn.Conv2d(channel, channel // reduction, 1)
+        self.gap = nn.AdaptiveAvgPool2d(1)
+        self.softmax = nn.Softmax(dim=-1)
+        self.reduction = reduction
+        self.f_e = nn.Conv2d( channel//reduction, channel, 1)
 
     def forward(self, x):
+        b,c,h,w = x.size()
+        Q = self.f_q(x)
+        mean =self.gap(Q)
+        Context = Q*mean
+        Context = self.softmax(Context)
 
-        b,c,w,h = x.size()
-        #Step1: embedding for each local point.
-        x_embedded = self.embedding(x)
+        V = self.f_v(x)
+        out = (Context*V).view(b,c//self.reduction,-1)
+        out = out.sum(dim=-1,keepdim=True).unsqueeze(dim=-1)
+        out = self.f_e(out)
 
-        # Learning the location. Shape: [b,loc_number,2]
-        norm_loc = self.get_max_index(x_embedded)
-        # Learning the scale_tril. Shape: [b,loc_number,2,2]
-        aa = x_embedded.mean(dim=3).std(dim=-1,keepdim=True)
-        bb = x_embedded.mean(dim=2).std(dim=-1,keepdim=True)
-        scale_tril = (torch.cat([aa,bb],dim=-1)*self.normal_scal).diag_embed()
-
-        # Step2： Distribution
-        # TODO: Learn a local point for each channel.
-        multiNorm = MultivariateNormal(loc=norm_loc*self.position_scal,scale_tril=scale_tril)
-        localtion_map = self.get_location_mask(x,b,w,h,self.local_num) # shape[w, h, b,local_num, 2]
-        pdf = multiNorm.log_prob(localtion_map*self.position_scal).exp().clone() # shape [w,h,b,local_num]
-        pdf = pdf.permute(2,0,1,3).unsqueeze(dim=1) #shape [b,1,w,h,local_num]
-        pdf[pdf != pdf] = 0 # Remove NaN due to precision.
+        return x+out
 
 
-        #Step3: Value embedding
-        # x_value = x.expand(self.local_num,b,c,w,h).reshape(self.local_num*b,c,w,h)
-        # x_value = self.value_embed(x_value).reshape(self.local_num,b,c,w,h).permute(1,2,3,4,0) # shape [b,c,w,h,local_num]
-        # Value Embedding: Option 1: using query embedding and expand 1 to c channels
-        x_value = x_embedded.permute(0,2,3,1).unsqueeze(1).repeat(1,c,1,1,1).clone()
 
-
-        #Step4: embeded_Value X possibility_density
-        increment = (x_value*pdf).mean(dim=-1)
-
-        return x+increment
-
-    def get_location_mask(self,x,b,w,h,local_num):
-        mask = (x[0, 0, :, :] != -999).nonzero()
-        mask = mask.reshape(w, h, 2)
-        return mask.expand(b,local_num, w, h, 2).permute(2,3,0,1,4)
-
-
-    def get_max_index(self,x):
-        # x shape: [b,c,w,h]
-        index1 = (x.max(2)[0]).max(-1, keepdim=True)[1]
-        index2 = (x.max(3)[0]).max(-1, keepdim=True)[1]
-        return torch.cat([index2, index1], dim=-1)
-
-    # def get_localation_map(self,b,w,h,local_num):
-    #     ww = torch.arange(0, w).view(1, w)
-    #     hh = torch.arange(0, h).view(h, 1)
-    #     position = torch.broadcast_tensors(ww, hh)
-    #     loc_map = torch.cat([position[1].unsqueeze(dim=-1), position[0].unsqueeze(dim=-1)], dim=-1)
-    #     return loc_map.expand(b,local_num, w, h, 2).permute(0,2,3,1,4)
 
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
@@ -108,7 +61,7 @@ class BasicBlock(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes)
         self.downsample = downsample
         self.stride = stride
-        self.dis  = DisLayer(planes)
+        self.mr  = MRLayer(planes)
 
     def forward(self, x):
         identity = x
@@ -119,7 +72,7 @@ class BasicBlock(nn.Module):
 
         out = self.conv2(out)
         out = self.bn2(out)
-        out = self.dis(out)
+        out = self.mr(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
@@ -141,7 +94,7 @@ class Bottleneck(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes)
         self.conv3 = conv1x1(planes, planes * self.expansion)
         self.bn3 = nn.BatchNorm2d(planes * self.expansion)
-        self.dis  = DisLayer(planes * self.expansion)
+        self.mr  = MRLayer(planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
@@ -159,7 +112,7 @@ class Bottleneck(nn.Module):
 
         out = self.conv3(out)
         out = self.bn3(out)
-        out = self.dis(out)
+        out = self.mr(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
@@ -238,7 +191,7 @@ class ResNet(nn.Module):
         return x
 
 
-def dis2_resnet18(pretrained=False, **kwargs):
+def mr_resnet18(pretrained=False, **kwargs):
     """Constructs a ResNet-18 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -247,7 +200,7 @@ def dis2_resnet18(pretrained=False, **kwargs):
     return model
 
 
-def dis2_resnet34(pretrained=False, **kwargs):
+def mr_resnet34(pretrained=False, **kwargs):
     """Constructs a ResNet-34 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -256,7 +209,7 @@ def dis2_resnet34(pretrained=False, **kwargs):
     return model
 
 
-def dis2_resnet50(pretrained=False, **kwargs):
+def mr_resnet50(pretrained=False, **kwargs):
     """Constructs a ResNet-50 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -265,7 +218,7 @@ def dis2_resnet50(pretrained=False, **kwargs):
     return model
 
 
-def dis2_resnet101(pretrained=False, **kwargs):
+def mr_resnet101(pretrained=False, **kwargs):
     """Constructs a ResNet-101 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -274,7 +227,7 @@ def dis2_resnet101(pretrained=False, **kwargs):
     return model
 
 
-def dis2_resnet152(pretrained=False, **kwargs):
+def mr_resnet152(pretrained=False, **kwargs):
     """Constructs a ResNet-152 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -287,19 +240,19 @@ def dis2_resnet152(pretrained=False, **kwargs):
 
 def demo():
     st = time.perf_counter()
-    for i in range(100):
-        net = dis2_resnet50(num_classes=1000)
+    for i in range(1):
+        net = mr_resnet50(num_classes=1000)
         y = net(torch.randn(2, 3, 224,224))
-        print("epoch: {},  shape: {}".format(i,y.size()))
+        print(y.size())
     print("CPU time: {}".format(time.perf_counter() - st))
 
 def demo2():
     st = time.perf_counter()
     for i in range(100):
-        net = dis2_resnet50(num_classes=1000).cuda()
+        net = mr_resnet50(num_classes=1000).cuda()
         y = net(torch.randn(2, 3, 224,224).cuda())
-        print("epoch: {},  shape: {}".format(i,y.size()))
-        print("Allocated: {}".format(torch.cuda.memory_allocated()/(1e6)))
+        print(y.size())
+        print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
 # demo()
