@@ -25,7 +25,7 @@ class MRLayer(nn.Module):
         b,c,h,w = x.size()
         Q = self.f_q(x)
         mean =self.gap(Q)
-        Context = Q*mean
+        Context = abs(Q-mean)
         Context = self.softmax(Context)
 
         V = self.f_v(x)
