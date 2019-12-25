@@ -11,6 +11,7 @@ import time
 
 __all__ = ['mr_resnet18', 'mr_resnet34', 'mr_resnet50', 'mr_resnet101', 'mr_resnet152']
 
+"""
 class MRLayer(nn.Module):
     def __init__(self, channel, reduction = 16):
         super(MRLayer, self).__init__()
@@ -37,8 +38,23 @@ class MRLayer(nn.Module):
         out = self.f_e(out)
 
         return x*self.sigmoid(out)
+"""
+class MRLayer(nn.Module):
+    def __init__(self, channel, reduction = 16):
+        super(MRLayer, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.fc       = nn.Sequential(
+                        nn.Linear(channel, channel // reduction),
+                        nn.ReLU(inplace = True),
+                        nn.Linear(channel // reduction, channel),
+                        nn.Sigmoid()
+                )
 
-
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1, 1)
+        return x * y
 
 
 def conv3x3(in_planes, out_planes, stride=1):
