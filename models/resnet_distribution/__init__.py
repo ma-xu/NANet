@@ -5,4 +5,5 @@ from __future__ import absolute_import
 # Original
 from .resnet_dis import *
 from .resnet_dis2 import *
+from .resnet_nonlocal import *
 
