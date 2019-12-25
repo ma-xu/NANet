@@ -25,8 +25,8 @@ class MRLayer(nn.Module):
         b,c,h,w = x.size()
         Q = self.f_q(x)
         mean =self.gap(Q)
-        # Context = abs(Q-mean)
-        Context = (Q*mean).view(b,c//self.reduction,-1)
+        Context = (abs(Q-mean)).view(b,c//self.reduction,-1)
+        #Context = (Q*mean).view(b,c//self.reduction,-1)
         Context = self.softmax(Context)
 
         V = self.f_v(x).view(b,c//self.reduction,-1)
@@ -256,5 +256,5 @@ def demo2():
         print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-demo()
+# demo()
 # demo2()
