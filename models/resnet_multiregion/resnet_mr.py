@@ -46,10 +46,7 @@ class MRLayer(nn.Module):
         self.conv_mask = nn.Conv2d(inplanes, 1, kernel_size=1)
         self.softmax = nn.Softmax(dim=2)
         self.channel_add_conv = nn.Sequential(
-            nn.Conv2d(inplanes, inplanes//reduction, kernel_size=1),
-            nn.LayerNorm([inplanes//reduction, 1, 1]),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(inplanes//reduction, inplanes, kernel_size=1)
+            nn.Conv2d(inplanes, inplanes, kernel_size=1),
         )
 
     def forward(self, x):
