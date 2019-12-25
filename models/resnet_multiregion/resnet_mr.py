@@ -54,20 +54,24 @@ class MRLayer(nn.Module):
         input_x = x
         # [N, C, H * W]
         input_x = input_x.view(batch, channel, height * width)
-        # [N, 1, C, H * W]
-        input_x = input_x.unsqueeze(1)
+        # # [N, 1, C, H * W]
+        # input_x = input_x.unsqueeze(1)
         # [N, 1, H, W]
         context_mask = self.conv_mask(x)
         # [N, 1, H * W]
         context_mask = context_mask.view(batch, 1, height * width)
         # [N, 1, H * W]
         context_mask = self.softmax(context_mask)
-        # [N, 1, H * W, 1]
-        context_mask = context_mask.unsqueeze(3)
-        # [N, 1, C, 1]
-        context = torch.matmul(input_x, context_mask)
-        # [N, C, 1, 1]
-        context = context.view(batch, channel, 1, 1)
+
+        context = (input_x * context_mask).sum(-1,keepdim=True).unsqueeze(dim=-1)
+
+
+        # # [N, 1, H * W, 1]
+        # context_mask = context_mask.unsqueeze(3)
+        # # [N, 1, C, 1]
+        # context = torch.matmul(input_x, context_mask)
+        # # [N, C, 1, 1]
+        # context = context.view(batch, channel, 1, 1)
 
         channel_add_term = self.channel_add_conv(context)
 
