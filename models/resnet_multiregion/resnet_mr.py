@@ -19,6 +19,7 @@ class MRLayer(nn.Module):
         self.gap = nn.AdaptiveAvgPool2d(1)
         self.softmax = nn.Softmax(dim=-1)
         self.reduction = reduction
+        self.sigmoid = nn.Sigmoid()
         self.f_e = nn.Conv2d( channel//reduction, channel, 1)
 
     def forward(self, x):
@@ -35,7 +36,7 @@ class MRLayer(nn.Module):
         out = out.sum(dim=-1,keepdim=True).unsqueeze(dim=-1)
         out = self.f_e(out)
 
-        return x+out
+        return x*self.sigmoid(out)
 
 
 
