@@ -41,14 +41,15 @@ class MRLayer(nn.Module):
 """
 
 class MRLayer(nn.Module):
-    def __init__(self, inplanes, planes):
+    def __init__(self, inplanes, reduction=16):
+        super(MRLayer, self).__init__()
         self.conv_mask = nn.Conv2d(inplanes, 1, kernel_size=1)
         self.softmax = nn.Softmax(dim=2)
         self.channel_add_conv = nn.Sequential(
-            nn.Conv2d(self.inplanes, self.planes, kernel_size=1),
-            nn.LayerNorm([self.planes, 1, 1]),
+            nn.Conv2d(inplanes, inplanes//reduction, kernel_size=1),
+            nn.LayerNorm([inplanes//reduction, 1, 1]),
             nn.ReLU(inplace=True),
-            nn.Conv2d(self.planes, self.inplanes, kernel_size=1)
+            nn.Conv2d(inplanes//reduction, inplanes, kernel_size=1)
         )
 
     def forward(self, x):
@@ -75,6 +76,7 @@ class MRLayer(nn.Module):
 
         out = x
         out = out + channel_add_term
+        return out
 
 
 
@@ -298,5 +300,5 @@ def demo2():
         print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-# demo()
+demo()
 # demo2()
