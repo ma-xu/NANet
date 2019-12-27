@@ -7,35 +7,38 @@ from torch.nn import init
 from torch.autograd import Variable
 from collections import OrderedDict
 import math
+import time
 
+__all__ = ['dn_resnet18', 'dn_resnet34', 'dn_resnet50', 'dn_resnet101', 'dn_resnet152']
 
-__all__ = ['sge_resnet18', 'sge_resnet34', 'sge_resnet50', 'sge_resnet101',
-           'sge_resnet152']
+class DNLayer(nn.Module):
+    def __init__(self, channel, reduction = 16):
+        super(DNLayer, self).__init__()
+        self.reduction = reduction
+        self.query = nn.Conv2d(channel, channel // reduction, 1)
+        self.key   = nn.Sequential(
+            nn.Conv2d(channel, channel // reduction, 1),
+            nn.AdaptiveAvgPool2d(1)
+        )
+        self.value = nn.Conv2d(channel, channel // reduction, 1)
+        self.weight = Parameter(torch.zeros(1))
+        self.bias = Parameter(torch.ones(1))
+        self.sig = nn.Sigmoid()
+        self.rescale = nn.Conv2d(channel // reduction,channel,1)
 
-class SpatialGroupEnhance(nn.Module):
-    def __init__(self, groups = 64):
-        super(SpatialGroupEnhance, self).__init__()
-        self.groups   = groups
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.weight   = Parameter(torch.zeros(1, groups, 1, 1))
-        self.bias     = Parameter(torch.ones(1, groups, 1, 1))
-        self.sig      = nn.Sigmoid()
+    def forward(self, x):
+        # Similarity function
+        b,c,w,h = x.size()
+        similarity = (self.query(x)*self.key(x)).view(b,c//self.reduction,-1)
+        context = similarity - similarity.mean(dim=2, keepdim=True)
+        std = context.std(dim=2, keepdim=True) + 1e-5
+        context = (context / std).view(b,c//self.reduction,w,h)
+        # affine function
+        context = context * self.weight + self.bias
+        value = self.value(x)*self.sig(context)
 
-    def forward(self, x): # (b, c, h, w)
-        b, c, h, w = x.size()
-        x = x.view(b * self.groups, -1, h, w) 
-        xn = x * self.avg_pool(x)
-        xn = xn.sum(dim=1, keepdim=True)
-        t = xn.view(b * self.groups, -1)
-        t = t - t.mean(dim=1, keepdim=True)
-        std = t.std(dim=1, keepdim=True) + 1e-5
-        t = t / std
-        t = t.view(b, self.groups, h, w)
-        t = t * self.weight + self.bias
-        t = t.view(b * self.groups, 1, h, w)
-        x = x * self.sig(t)
-        x = x.view(b, c, h, w)
-        return x
+        value = self.rescale(value)
+        return value
 
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
@@ -60,7 +63,7 @@ class BasicBlock(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes)
         self.downsample = downsample
         self.stride = stride
-        self.sge    = SpatialGroupEnhance(64)
+        self.dn  = DNLayer(planes)
 
     def forward(self, x):
         identity = x
@@ -71,7 +74,7 @@ class BasicBlock(nn.Module):
 
         out = self.conv2(out)
         out = self.bn2(out)
-        out = self.sge(out)
+        out = self.dn(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
@@ -80,6 +83,7 @@ class BasicBlock(nn.Module):
         out = self.relu(out)
 
         return out
+
 
 class Bottleneck(nn.Module):
     expansion = 4
@@ -92,10 +96,10 @@ class Bottleneck(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes)
         self.conv3 = conv1x1(planes, planes * self.expansion)
         self.bn3 = nn.BatchNorm2d(planes * self.expansion)
+        self.dn  = DNLayer(planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
-        self.sge    = SpatialGroupEnhance(64)
 
     def forward(self, x):
         identity = x
@@ -110,7 +114,7 @@ class Bottleneck(nn.Module):
 
         out = self.conv3(out)
         out = self.bn3(out)
-        out = self.sge(out)
+        out = self.dn(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
@@ -119,8 +123,6 @@ class Bottleneck(nn.Module):
         out = self.relu(out)
 
         return out
-
-
 
 
 class ResNet(nn.Module):
@@ -191,9 +193,7 @@ class ResNet(nn.Module):
         return x
 
 
-
-
-def sge_resnet18(pretrained=False, **kwargs):
+def dn_resnet18(pretrained=False, **kwargs):
     """Constructs a ResNet-18 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -202,7 +202,7 @@ def sge_resnet18(pretrained=False, **kwargs):
     return model
 
 
-def sge_resnet34(pretrained=False, **kwargs):
+def dn_resnet34(pretrained=False, **kwargs):
     """Constructs a ResNet-34 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -211,7 +211,7 @@ def sge_resnet34(pretrained=False, **kwargs):
     return model
 
 
-def sge_resnet50(pretrained=False, **kwargs):
+def dn_resnet50(pretrained=False, **kwargs):
     """Constructs a ResNet-50 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -220,7 +220,7 @@ def sge_resnet50(pretrained=False, **kwargs):
     return model
 
 
-def sge_resnet101(pretrained=False, **kwargs):
+def dn_resnet101(pretrained=False, **kwargs):
     """Constructs a ResNet-101 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -229,7 +229,7 @@ def sge_resnet101(pretrained=False, **kwargs):
     return model
 
 
-def sge_resnet152(pretrained=False, **kwargs):
+def dn_resnet152(pretrained=False, **kwargs):
     """Constructs a ResNet-152 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -238,9 +238,24 @@ def sge_resnet152(pretrained=False, **kwargs):
     return model
 
 
+
+
 def demo():
-    net = sge_resnet50(num_classes=1000)
-    y = net(torch.randn(1, 3, 224,224))
-    print(y.size())
+    st = time.perf_counter()
+    for i in range(1):
+        net = dn_resnet50(num_classes=1000)
+        y = net(torch.randn(2, 3, 224,224))
+        print(y.size())
+    print("CPU time: {}".format(time.perf_counter() - st))
+
+def demo2():
+    st = time.perf_counter()
+    for i in range(100):
+        net = dn_resnet50(num_classes=1000).cuda()
+        y = net(torch.randn(2, 3, 224,224).cuda())
+        print(y.size())
+        print("Allocated: {}".format(torch.cuda.memory_allocated()))
+    print("GPU time: {}".format(time.perf_counter() - st))
 
 # demo()
+# demo2()

@@ -8,3 +8,5 @@ from .mobilenet import *
 from .resnet_distribution import *
 
 from .resnet_multiregion import *
+
+from .resnet_distance import *
