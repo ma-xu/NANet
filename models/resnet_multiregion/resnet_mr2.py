@@ -108,7 +108,7 @@ class BasicBlock(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes)
         self.downsample = downsample
         self.stride = stride
-        # self.mr  = MRLayer(planes)
+        self.mr  = MRLayer(planes)
 
     def forward(self, x):
         identity = x
@@ -119,7 +119,7 @@ class BasicBlock(nn.Module):
 
         out = self.conv2(out)
         out = self.bn2(out)
-        # out = self.mr(out)
+        out = self.mr(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
@@ -141,7 +141,7 @@ class Bottleneck(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes)
         self.conv3 = conv1x1(planes, planes * self.expansion)
         self.bn3 = nn.BatchNorm2d(planes * self.expansion)
-        # self.mr  = MRLayer(planes * self.expansion)
+        self.mr  = MRLayer(planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
@@ -159,7 +159,7 @@ class Bottleneck(nn.Module):
 
         out = self.conv3(out)
         out = self.bn3(out)
-        # out = self.mr(out)
+        out = self.mr(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
@@ -186,7 +186,6 @@ class ResNet(nn.Module):
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
-        self.mr = MRLayer(inplanes=2048)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -231,7 +230,6 @@ class ResNet(nn.Module):
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
-        x = self.mr(x)
 
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
