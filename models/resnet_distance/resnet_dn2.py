@@ -241,7 +241,7 @@ def dn_resnet152(pretrained=False, **kwargs):
 
 def demo():
     st = time.perf_counter()
-    for i in range(1000):
+    for i in range(100):
         net = dn_resnet50(num_classes=1000)
         y = net(torch.randn(2, 3, 224,224))
         print(y.size())
@@ -249,7 +249,7 @@ def demo():
 
 def demo2():
     st = time.perf_counter()
-    for i in range(1000):
+    for i in range(100):
         net = dn_resnet50(num_classes=1000).cuda()
         y = net(torch.randn(2, 3, 224,224).cuda())
         print(y.size())
