@@ -31,15 +31,36 @@ class DNLayer(nn.Module):
     def forward(self, x):
         # Similarity function
         b,c,w,h = x.size()
-        context = (self.query(x)*self.key(x)).view(b,c//self.reduction,-1)
-        # context = context - context.mean(dim=2, keepdim=True)
-        std = context.std(dim=2, keepdim=True) + 1e-5
-        context = (context / std).view(b,c//self.reduction,w,h)
-        # affine function
-        context = context * self.weight + self.bias
-        value = self.value(x)*self.sig(context)
 
-        value = self.rescale(value)
+
+        st = time.perf_counter()
+        for i in range(1000):
+            context = (self.query(x)*self.key(x)).view(b,c//self.reduction,-1)
+        print("similarity  : {}".format(time.perf_counter() - st))
+        # context = context - context.mean(dim=2, keepdim=True)
+
+
+
+        st = time.perf_counter()
+        for i in range(1000):
+            std = context.std(dim=2, keepdim=True) + 1e-5
+        print("std         : {}".format(time.perf_counter() - st))
+
+
+
+        st = time.perf_counter()
+        for i in range(1000):
+            context = (context / std).view(b,c//self.reduction,w,h)
+            # affine function
+            context = context * self.weight + self.bias
+        print("context     : {}".format(time.perf_counter() - st))
+
+        st = time.perf_counter()
+        for i in range(1000):
+            value = self.value(x)*self.sig(context)
+            value = self.rescale(value)
+        print("value       : {}".format(time.perf_counter() - st))
+
         return value
 
 def conv3x3(in_planes, out_planes, stride=1):
@@ -252,7 +273,7 @@ def demo():
 
 def demo2():
     st = time.perf_counter()
-    for i in range(100):
+    for i in range(1):
         net = dn_resnet50(num_classes=1000).cuda()
         y = net(torch.randn(2, 3, 224,224).cuda())
         print(y.size())
@@ -260,4 +281,4 @@ def demo2():
     print("GPU time: {}".format(time.perf_counter() - st))
 
 demo()
-# demo2()
+demo2()
