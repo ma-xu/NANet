@@ -12,18 +12,13 @@ __all__ = ['nl_resnet18', 'nl_resnet34', 'nl_resnet50', 'nl_resnet101',
            'nl_resnet152']
 
 class NonLocalBlock2D(nn.Module):
-    def __init__(self, in_channels, inter_channels=None, sub_sample=True, bn_layer=True):
+    def __init__(self, in_channels, reduction=2, sub_sample=True, bn_layer=True):
         super(NonLocalBlock2D, self).__init__()
 
         self.sub_sample = sub_sample
 
         self.in_channels = in_channels
-        self.inter_channels = inter_channels
-
-        if self.inter_channels is None:
-            self.inter_channels = in_channels // 2
-            if self.inter_channels == 0:
-                self.inter_channels = 1
+        self.inter_channels = in_channels//reduction
 
         conv_nd = nn.Conv2d
         max_pool_layer = nn.MaxPool2d(kernel_size=(2, 2))
@@ -31,19 +26,14 @@ class NonLocalBlock2D(nn.Module):
         self.g = conv_nd(in_channels=self.in_channels, out_channels=self.inter_channels,
                          kernel_size=1, stride=1, padding=0)
 
-        if bn_layer:
-            self.W = nn.Sequential(
-                conv_nd(in_channels=self.inter_channels, out_channels=self.in_channels,
-                        kernel_size=1, stride=1, padding=0),
-                bn(self.in_channels)
-            )
-            nn.init.constant_(self.W[1].weight, 0)
-            nn.init.constant_(self.W[1].bias, 0)
-        else:
-            self.W = conv_nd(in_channels=self.inter_channels, out_channels=self.in_channels,
-                             kernel_size=1, stride=1, padding=0)
-            nn.init.constant_(self.W.weight, 0)
-            nn.init.constant_(self.W.bias, 0)
+        self.W = nn.Sequential(
+            conv_nd(in_channels=self.inter_channels, out_channels=self.in_channels,
+                    kernel_size=1, stride=1, padding=0),
+            bn(self.in_channels)
+        )
+        nn.init.constant_(self.W[1].weight, 0)
+        nn.init.constant_(self.W[1].bias, 0)
+
 
         self.theta = conv_nd(in_channels=self.in_channels, out_channels=self.inter_channels,
                              kernel_size=1, stride=1, padding=0)
