@@ -12,7 +12,7 @@ __all__ = ['nl_resnet18', 'nl_resnet34', 'nl_resnet50', 'nl_resnet101',
            'nl_resnet152']
 
 class NonLocalBlock2D(nn.Module):
-    def __init__(self, in_channels, reduction=2, sub_sample=True, bn_layer=True):
+    def __init__(self, in_channels, reduction=16, sub_sample=True, bn_layer=True):
         super(NonLocalBlock2D, self).__init__()
 
         self.sub_sample = sub_sample
@@ -284,6 +284,6 @@ def demo2():
         print(y.size())
     print("CPU time: {}".format(time.perf_counter() - st))
 
-demo()
+# demo()
 # demo2()
 

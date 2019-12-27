@@ -9,7 +9,7 @@ from collections import OrderedDict
 import math
 import time
 
-__all__ = ['mr_resnet18', 'mr_resnet34', 'mr_resnet50', 'mr_resnet101', 'mr_resnet152']
+__all__ = ['mr2_resnet18', 'mr2_resnet34', 'mr2_resnet50', 'mr2_resnet101', 'mr2_resnet152']
 
 """
 class MRLayer(nn.Module):
@@ -238,7 +238,7 @@ class ResNet(nn.Module):
         return x
 
 
-def mr_resnet18(pretrained=False, **kwargs):
+def mr2_resnet18(pretrained=False, **kwargs):
     """Constructs a ResNet-18 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -247,7 +247,7 @@ def mr_resnet18(pretrained=False, **kwargs):
     return model
 
 
-def mr_resnet34(pretrained=False, **kwargs):
+def mr2_resnet34(pretrained=False, **kwargs):
     """Constructs a ResNet-34 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -256,7 +256,7 @@ def mr_resnet34(pretrained=False, **kwargs):
     return model
 
 
-def mr_resnet50(pretrained=False, **kwargs):
+def mr2_resnet50(pretrained=False, **kwargs):
     """Constructs a ResNet-50 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -265,7 +265,7 @@ def mr_resnet50(pretrained=False, **kwargs):
     return model
 
 
-def mr_resnet101(pretrained=False, **kwargs):
+def mr2_resnet101(pretrained=False, **kwargs):
     """Constructs a ResNet-101 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -274,7 +274,7 @@ def mr_resnet101(pretrained=False, **kwargs):
     return model
 
 
-def mr_resnet152(pretrained=False, **kwargs):
+def mr2_resnet152(pretrained=False, **kwargs):
     """Constructs a ResNet-152 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -288,7 +288,7 @@ def mr_resnet152(pretrained=False, **kwargs):
 def demo():
     st = time.perf_counter()
     for i in range(1):
-        net = mr_resnet50(num_classes=1000)
+        net = mr2_resnet50(num_classes=1000)
         y = net(torch.randn(2, 3, 224,224))
         print(y.size())
     print("CPU time: {}".format(time.perf_counter() - st))
@@ -296,7 +296,7 @@ def demo():
 def demo2():
     st = time.perf_counter()
     for i in range(100):
-        net = mr_resnet50(num_classes=1000).cuda()
+        net = mr2_resnet50(num_classes=1000).cuda()
         y = net(torch.randn(2, 3, 224,224).cuda())
         print(y.size())
         print("Allocated: {}".format(torch.cuda.memory_allocated()))
