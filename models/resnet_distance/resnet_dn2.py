@@ -14,7 +14,7 @@ import time
 __all__ = ['dn_resnet18', 'dn_resnet34', 'dn_resnet50', 'dn_resnet101', 'dn_resnet152']
 
 class DNLayer(nn.Module):
-    def __init__(self, channel, inner_channel = 1):
+    def __init__(self, channel):
         super(DNLayer, self).__init__()
         self.query = nn.Conv2d(channel, 1, 1)
         self.key   = nn.Sequential(
