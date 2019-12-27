@@ -50,14 +50,14 @@ class DNLayer(nn.Module):
 
         st = time.perf_counter()
         for i in range(1000):
-            context = (context / std).view(b,c//self.reduction,w,h)
+            normal = (context / std).view(b,c//self.reduction,w,h)
             # affine function
-            context = context * self.weight + self.bias
-        print("context     : {}".format(time.perf_counter() - st))
+            normal = normal * self.weight + self.bias
+        print("normal      : {}".format(time.perf_counter() - st))
 
         st = time.perf_counter()
         for i in range(1000):
-            value = self.value(x)*self.sig(context)
+            value = self.value(x)*self.sig(normal)
             value = self.rescale(value)
         print("value       : {}".format(time.perf_counter() - st))
 
