@@ -29,8 +29,8 @@ class DNLayer(nn.Module):
     def forward(self, x):
         # Similarity function
         b,c,w,h = x.size()
-        similarity = (self.query(x)*self.key(x)).view(b,c//self.reduction,-1)
-        context = similarity - similarity.mean(dim=2, keepdim=True)
+        context = (self.query(x)*self.key(x)).view(b,c//self.reduction,-1)
+        # context = context - context.mean(dim=2, keepdim=True)
         std = context.std(dim=2, keepdim=True) + 1e-5
         context = (context / std).view(b,c//self.reduction,w,h)
         # affine function
@@ -257,5 +257,5 @@ def demo2():
         print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-# demo()
+demo()
 # demo2()
