@@ -23,14 +23,15 @@ class PRMLayer(nn.Module):
         self.query = nn.Conv2d(channel, number, 1)
         self.key   =  nn.Conv2d(channel, number, 1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
-        self.weight = Parameter(torch.zeros(1))
-        self.bias = Parameter(torch.ones(1))
+        self.weight = Parameter(torch.zeros(1,self.number,1,1))
+        self.bias = Parameter(torch.ones(1,self.number,1,1))
         self.sig = nn.Sigmoid()
         self.distance_embedding = nn.Sequential(
             nn.Conv2d(2,8,1),
             nn.ReLU(inplace=True),
             nn.Conv2d(8,1,1)
         )
+        self.gather = nn.Conv2d(self.number, 1, 1)
 
     def forward(self, x):
 
@@ -50,9 +51,10 @@ class PRMLayer(nn.Module):
         context = (-abs(query - key)+Distance).view(b, self.number, -1)
         # context = context - context.mean(dim=2, keepdim=True)
         std = context.std(dim=2, keepdim=True) + 1e-5
-        context = (context / std).view(b,1,h,w)
+        context = (context / std).view(b,self.number,h,w)
         # affine function
         context = context * self.weight + self.bias
+        context = self.gather(context)
         value = x*self.sig(context)
 
         return value
