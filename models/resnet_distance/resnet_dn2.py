@@ -19,7 +19,7 @@ class DNLayer(nn.Module):
         self.query = nn.Conv2d(channel, 1, 1)
         self.key   = nn.Sequential(
             nn.Conv2d(channel, 1, 1),
-            nn.AdaptiveAvgPool2d(1)
+            nn.AdaptiveMaxPool2d(1)
         )
         self.weight = Parameter(torch.zeros(1))
         self.bias = Parameter(torch.ones(1))
