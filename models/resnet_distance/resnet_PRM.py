@@ -246,7 +246,7 @@ def prm_resnet50(pretrained=False, **kwargs):
 def demo():
     st = time.perf_counter()
     for i in range(1):
-        net = pn_resnet50(num_classes=1000)
+        net = prm_resnet50(num_classes=1000)
         y = net(torch.randn(6, 3, 224,224))
         print(i)
     print("CPU time: {}".format(time.perf_counter() - st))
@@ -254,7 +254,7 @@ def demo():
 def demo2():
     st = time.perf_counter()
     for i in range(100):
-        net = pn_resnet50(num_classes=1000).cuda()
+        net = prm_resnet50(num_classes=1000).cuda()
         y = net(torch.randn(2, 3, 224,224).cuda())
         print(i)
         # print("Allocated: {}".format(torch.cuda.memory_allocated()))
