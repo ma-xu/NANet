@@ -9,39 +9,72 @@ from collections import OrderedDict
 import math
 import time
 
-"""0.17s / batch"""
+"""s / batch"""
 """
-K,Q, conv2D(inchannel, 1)
+add position
 """
 
-__all__ = ['dn2_resnet50']
+__all__ = ['pn_resnet50']
 
 class DNLayer(nn.Module):
     def __init__(self, channel):
         super(DNLayer, self).__init__()
         self.query = nn.Conv2d(channel, 1, 1)
-        self.key   = nn.Sequential(
-            nn.Conv2d(channel, 1, 1),
-            nn.AdaptiveMaxPool2d(1)
-        )
+        self.key   =  nn.Conv2d(channel, 1, 1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
         self.weight = Parameter(torch.zeros(1))
         self.bias = Parameter(torch.ones(1))
         self.sig = nn.Sigmoid()
+        self.distance_embedding = nn.Sequential(
+            nn.Conv2d(2,8,1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(8,1,1)
+        )
 
 
     def forward(self, x):
-        b,c,w,h = x.size()
+        b,c,h,w = x.size()
         # Similarity function
+        query = self.query(x)
+        position_mask = self.get_position_mask(x,b,h,w)
+        key = self.key(x)
+        key_value = self.max_pool(key)
+        key_position = self.get_key_position(key,key_value)
+
+        Distance = abs(position_mask-key_value)
+
+        Distance = self.distance_embedding(Distance)
+
         # context = (self.query(x)*self.key(x)).view(b,1,-1)
-        context = -abs(self.query(x) - self.key(x)).view(b, 1, -1)
+        context = (-abs(query - key)+Distance).view(b, 1, -1)
         # context = context - context.mean(dim=2, keepdim=True)
         std = context.std(dim=2, keepdim=True) + 1e-5
-        context = (context / std).view(b,1,w,h)
+        context = (context / std).view(b,1,h,w)
         # affine function
         context = context * self.weight + self.bias
         value = x*self.sig(context)
 
         return value
+
+
+    def get_position_mask(self,x,b,h,w):
+        mask = (x[0, 0, :, :] != 2020).nonzero()
+        mask = (mask.reshape(h,w, 2)).permute(2,0,1).expand(b,2,h,w)
+        return mask
+
+    def get_key_position(self, key,value):
+        position = (key==value).nonzero()
+        position = (position[:,2:4]).unsqueeze(-1).unsqueeze(-1)
+        return position
+
+
+
+
+
+
+
+
+
 
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
@@ -197,7 +230,7 @@ class ResNet(nn.Module):
 
 
 
-def dn2_resnet50(pretrained=False, **kwargs):
+def pn_resnet50(pretrained=False, **kwargs):
     """Constructs a ResNet-50 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -212,15 +245,15 @@ def dn2_resnet50(pretrained=False, **kwargs):
 def demo():
     st = time.perf_counter()
     for i in range(1):
-        net = dn2_resnet50(num_classes=1000)
-        y = net(torch.randn(2, 3, 224,224))
+        net = pn_resnet50(num_classes=1000)
+        y = net(torch.randn(6, 3, 224,224))
         print(i)
     print("CPU time: {}".format(time.perf_counter() - st))
 
 def demo2():
     st = time.perf_counter()
     for i in range(100):
-        net = dn2_resnet50(num_classes=1000).cuda()
+        net = pn_resnet50(num_classes=1000).cuda()
         y = net(torch.randn(2, 3, 224,224).cuda())
         print(i)
         # print("Allocated: {}".format(torch.cuda.memory_allocated()))

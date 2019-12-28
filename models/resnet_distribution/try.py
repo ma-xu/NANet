@@ -5,13 +5,16 @@ import torch
 # multiNorm = MultivariateNormal(loc=normal_loc,scale_tril=(normal_scal).diag_embed())
 import torch.nn as nn
 
-max_pooling = nn.AdaptiveMaxPool2d(1)
+
 max_pooling2 = nn.AdaptiveMaxPool2d(1,return_indices=True)
 
 
-x=torch.range(0,10)
+x=torch.rand(1,1,3,3)
 print(x)
-
+y,index = max_pooling2(x)
+print(y)
+print(index)
+print((x==y).nonzero())
 
 
 # demo = torch.rand(1,2,3,3)
