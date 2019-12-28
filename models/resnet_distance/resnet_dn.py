@@ -244,10 +244,10 @@ def dn_resnet152(pretrained=False, **kwargs):
 
 def demo():
     st = time.perf_counter()
-    for i in range(1):
+    for i in range(100):
         net = dn_resnet50(num_classes=1000)
         y = net(torch.randn(2, 3, 224,224))
-        print(y.size())
+        print(i)
     print("CPU time: {}".format(time.perf_counter() - st))
 
 def demo2():
@@ -255,9 +255,8 @@ def demo2():
     for i in range(100):
         net = dn_resnet50(num_classes=1000).cuda()
         y = net(torch.randn(2, 3, 224,224).cuda())
-        print(y.size())
-        print("Allocated: {}".format(torch.cuda.memory_allocated()))
+        print(i)
     print("GPU time: {}".format(time.perf_counter() - st))
 
 demo()
-# demo2()
+demo2()
