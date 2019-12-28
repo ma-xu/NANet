@@ -9,7 +9,7 @@ from collections import OrderedDict
 import math
 import time
 
-"""0.2s / batch"""
+"""0.17s / batch"""
 
 __all__ = ['dn2_resnet50']
 
@@ -27,9 +27,10 @@ class DNLayer(nn.Module):
 
 
     def forward(self, x):
-        # Similarity function
         b,c,w,h = x.size()
-        context = (self.query(x)*self.key(x)).view(b,1,-1)
+        # Similarity function
+        # context = (self.query(x)*self.key(x)).view(b,1,-1)
+        context = -abs(self.query(x) - self.key(x)).view(b, 1, -1)
         # context = context - context.mean(dim=2, keepdim=True)
         std = context.std(dim=2, keepdim=True) + 1e-5
         context = (context / std).view(b,1,w,h)
@@ -207,7 +208,7 @@ def dn2_resnet50(pretrained=False, **kwargs):
 
 def demo():
     st = time.perf_counter()
-    for i in range(100):
+    for i in range(1):
         net = dn2_resnet50(num_classes=1000)
         y = net(torch.randn(2, 3, 224,224))
         print(i)
