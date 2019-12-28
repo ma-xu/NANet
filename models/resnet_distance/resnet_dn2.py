@@ -11,7 +11,7 @@ import time
 
 """0.2s / batch"""
 
-__all__ = ['dn_resnet18', 'dn_resnet34', 'dn_resnet50', 'dn_resnet101', 'dn_resnet152']
+__all__ = ['dn2_resnet50']
 
 class DNLayer(nn.Module):
     def __init__(self, channel):
@@ -192,25 +192,8 @@ class ResNet(nn.Module):
         return x
 
 
-def dn_resnet18(pretrained=False, **kwargs):
-    """Constructs a ResNet-18 model.
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
-    return model
 
-
-def dn_resnet34(pretrained=False, **kwargs):
-    """Constructs a ResNet-34 model.
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    model = ResNet(BasicBlock, [3, 4, 6, 3], **kwargs)
-    return model
-
-
-def dn_resnet50(pretrained=False, **kwargs):
+def dn2_resnet50(pretrained=False, **kwargs):
     """Constructs a ResNet-50 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -219,30 +202,13 @@ def dn_resnet50(pretrained=False, **kwargs):
     return model
 
 
-def dn_resnet101(pretrained=False, **kwargs):
-    """Constructs a ResNet-101 model.
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    model = ResNet(Bottleneck, [3, 4, 23, 3], **kwargs)
-    return model
-
-
-def dn_resnet152(pretrained=False, **kwargs):
-    """Constructs a ResNet-152 model.
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    model = ResNet(Bottleneck, [3, 8, 36, 3], **kwargs)
-    return model
-
 
 
 
 def demo():
     st = time.perf_counter()
     for i in range(100):
-        net = dn_resnet50(num_classes=1000)
+        net = dn2_resnet50(num_classes=1000)
         y = net(torch.randn(2, 3, 224,224))
         print(i)
     print("CPU time: {}".format(time.perf_counter() - st))
@@ -250,11 +216,11 @@ def demo():
 def demo2():
     st = time.perf_counter()
     for i in range(100):
-        net = dn_resnet50(num_classes=1000).cuda()
+        net = dn2_resnet50(num_classes=1000).cuda()
         y = net(torch.randn(2, 3, 224,224).cuda())
         print(i)
         # print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-demo()
-demo2()
+# demo()
+# demo2()
