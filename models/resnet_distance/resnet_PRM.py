@@ -14,7 +14,7 @@ import time
 add position (only one position)
 """
 
-__all__ = ['pn_resnet50']
+__all__ = ['prm_resnet50']
 
 class PRMLayer(nn.Module):
     def __init__(self, channel,number=8):
@@ -231,7 +231,7 @@ class ResNet(nn.Module):
 
 
 
-def pn_resnet50(pretrained=False, **kwargs):
+def prm_resnet50(pretrained=False, **kwargs):
     """Constructs a ResNet-50 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
