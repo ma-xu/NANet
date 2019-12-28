@@ -40,6 +40,9 @@ class DNLayer(nn.Module):
         key_value = self.max_pool(key)
         key_position = self.get_key_position(key,key_value)
 
+
+        print(position_mask.size())
+        print(key_position.size())
         Distance = abs(position_mask-key_position).float()
 
         Distance = self.distance_embedding(Distance)
@@ -258,5 +261,5 @@ def demo2():
         # print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-demo()
+# demo()
 # demo2()
