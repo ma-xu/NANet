@@ -16,11 +16,12 @@ add position (only one position)
 
 __all__ = ['pn_resnet50']
 
-class DNLayer(nn.Module):
-    def __init__(self, channel):
-        super(DNLayer, self).__init__()
-        self.query = nn.Conv2d(channel, 1, 1)
-        self.key   =  nn.Conv2d(channel, 1, 1)
+class PRMLayer(nn.Module):
+    def __init__(self, channel,number=8):
+        super(PRMLayer, self).__init__()
+        self.number = number
+        self.query = nn.Conv2d(channel, number, 1)
+        self.key   =  nn.Conv2d(channel, number, 1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
         self.weight = Parameter(torch.zeros(1))
         self.bias = Parameter(torch.ones(1))
@@ -32,20 +33,21 @@ class DNLayer(nn.Module):
         )
 
     def forward(self, x):
+
         b,c,h,w = x.size()
         # Similarity function
         query = self.query(x)
-        position_mask = self.get_position_mask(x,b,h,w)
+        position_mask = self.get_position_mask(x,b,h,w,self.number)
         key = self.key(x)
         key_value = self.max_pool(key)
-        key_position = self.get_key_position(key,key_value)
+        key_position = self.get_key_position(key,key_value) # shape [b*num,2,1,1]
 
         Distance = abs(position_mask-key_position).float()
 
-        Distance = self.distance_embedding(Distance)
+        Distance = (self.distance_embedding(Distance)).view(b,self.number,h,w)
 
         # context = (self.query(x)*self.key(x)).view(b,1,-1)
-        context = (-abs(query - key)+Distance).view(b, 1, -1)
+        context = (-abs(query - key)+Distance).view(b, self.number, -1)
         # context = context - context.mean(dim=2, keepdim=True)
         std = context.std(dim=2, keepdim=True) + 1e-5
         context = (context / std).view(b,1,h,w)
@@ -56,9 +58,9 @@ class DNLayer(nn.Module):
         return value
 
 
-    def get_position_mask(self,x,b,h,w):
+    def get_position_mask(self,x,b,h,w,number):
         mask = (x[0, 0, :, :] != 2020).nonzero()
-        mask = (mask.reshape(h,w, 2)).permute(2,0,1).expand(b,2,h,w)
+        mask = (mask.reshape(h,w, 2)).permute(2,0,1).expand(b*number,2,h,w)
         return mask
 
     def get_key_position(self, key,value):
@@ -98,7 +100,7 @@ class BasicBlock(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes)
         self.downsample = downsample
         self.stride = stride
-        self.dn  = DNLayer(planes)
+        self.prm  = PRMLayer(planes)
 
     def forward(self, x):
         identity = x
@@ -109,7 +111,7 @@ class BasicBlock(nn.Module):
 
         out = self.conv2(out)
         out = self.bn2(out)
-        out = self.dn(out)
+        out = self.prm(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
@@ -131,7 +133,7 @@ class Bottleneck(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes)
         self.conv3 = conv1x1(planes, planes * self.expansion)
         self.bn3 = nn.BatchNorm2d(planes * self.expansion)
-        self.dn  = DNLayer(planes * self.expansion)
+        self.prm  = PRMLayer(planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
@@ -149,7 +151,7 @@ class Bottleneck(nn.Module):
 
         out = self.conv3(out)
         out = self.bn3(out)
-        out = self.dn(out)
+        out = self.prm(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
