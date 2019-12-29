@@ -48,7 +48,7 @@ class PRMLayer(nn.Module):
         Distance = (self.distance_embedding(Distance)).view(b,self.number,h,w)
 
         # context = (self.query(x)*self.key(x)).view(b,1,-1)
-        context = (-abs(query - key)+Distance).view(b, self.number, -1)
+        context = (-abs(query - key_value)+Distance).view(b, self.number, -1)
         # context = context - context.mean(dim=2, keepdim=True)
         std = context.std(dim=2, keepdim=True) + 1e-5
         context = (context / std).view(b,self.number,h,w)
