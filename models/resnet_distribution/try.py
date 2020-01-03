@@ -4,6 +4,7 @@ import torch
 # normal_scal = torch.rand(4,8,2)
 # multiNorm = MultivariateNormal(loc=normal_loc,scale_tril=(normal_scal).diag_embed())
 import torch.nn as nn
+import torchvision.models
 
 
 max_pooling2 = nn.AdaptiveMaxPool2d(1,return_indices=True)

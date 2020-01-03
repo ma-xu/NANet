@@ -14,13 +14,13 @@ import time
 add position (only one position)
 """
 
-__all__ = ['prm2_resnet50']
+__all__ = ['prm2_resnet18','prm2_resnet34','prm2_resnet50','prm2_resnet101','prm2_resnet152']
 
 """
 group is the number of selected points.
 """
 class PRMLayer(nn.Module):
-    def __init__(self, channel,reduction=2,groups=8):
+    def __init__(self, channel,reduction=16,groups=4):
         super(PRMLayer, self).__init__()
         self.groups = groups
         self.reduction = reduction
@@ -248,6 +248,24 @@ class ResNet(nn.Module):
 
 
 
+def prm2_resnet18(pretrained=False, **kwargs):
+    """Constructs a ResNet-18 model.
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
+    return model
+
+
+def prm2_resnet34(pretrained=False, **kwargs):
+    """Constructs a ResNet-34 model.
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = ResNet(BasicBlock, [3, 4, 6, 3], **kwargs)
+    return model
+
+
 def prm2_resnet50(pretrained=False, **kwargs):
     """Constructs a ResNet-50 model.
     Args:
@@ -257,14 +275,33 @@ def prm2_resnet50(pretrained=False, **kwargs):
     return model
 
 
+def prm2_resnet101(pretrained=False, **kwargs):
+    """Constructs a ResNet-101 model.
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = ResNet(Bottleneck, [3, 4, 23, 3], **kwargs)
+    return model
+
+
+def prm2_resnet152(pretrained=False, **kwargs):
+    """Constructs a ResNet-152 model.
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = ResNet(Bottleneck, [3, 8, 36, 3], **kwargs)
+    return model
+
+
+
 
 
 
 def demo():
     st = time.perf_counter()
     for i in range(1):
-        net = prm2_resnet50(num_classes=1000)
-        y = net(torch.randn(6, 3, 224,224))
+        net = prm2_resnet18(num_classes=1000)
+        y = net(torch.randn(1, 3, 224,224))
         print(i)
     print("CPU time: {}".format(time.perf_counter() - st))
 
@@ -277,5 +314,5 @@ def demo2():
         # print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-demo()
+# demo()
 # demo2()

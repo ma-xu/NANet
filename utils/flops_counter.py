@@ -5,7 +5,7 @@ import numpy as np
 def get_model_complexity_info(model, input_res, print_per_layer_stat=True, as_strings=True, channel=3):
     assert type(input_res) is tuple
     assert len(input_res) == 2
-    batch = torch.FloatTensor(1, channel, *input_res)
+    batch = torch.rand(1, channel, *input_res)
     flops_model = add_flops_counting_methods(model)
     flops_model.eval().start_flops_count()
     out = flops_model(batch)

@@ -2,7 +2,7 @@ from utils import get_model_complexity_info
 import models as models
 import torchvision.models
 
-model = models.__dict__['dis2_resnet101'](num_classes=1000)
+model = models.__dict__['prm2_resnet152'](num_classes=1000)
 
 flops, params = get_model_complexity_info(model, (224, 224), as_strings=False, print_per_layer_stat=False)
 print('Flops:  %.3f' % (flops / 1e9))
