@@ -36,7 +36,6 @@ class PRMLayer(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(8,1,1)
         )
-        self.gather = nn.Conv2d(channel//reduction, groups, 1,groups=groups)
 
     def forward(self, x):
 
@@ -340,5 +339,5 @@ def demo2():
         # print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-demo()
+# demo()
 # demo2()
