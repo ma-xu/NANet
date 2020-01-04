@@ -1,73 +1,123 @@
 import torch.nn as nn
-# import torch.utils.model_zoo as model_zoo
-# from torch.nn.parameter import Parameter
+import torch.utils.model_zoo as model_zoo
+from torch.nn.parameter import Parameter
 import torch
-import time
 import torch.nn.functional as F
-# from torch.nn import init
-# from torch.autograd import Variable
-# from collections import OrderedDict
-# import math
-__all__ = ['nl_resnet18', 'nl_resnet34', 'nl_resnet50', 'nl_resnet101',
-           'nl_resnet152']
+from torch.nn import init
+from torch.autograd import Variable
+from collections import OrderedDict
+import math
+import time
 
-class NonLocalBlock2D(nn.Module):
-    def __init__(self, in_channels, reduction=16, sub_sample=True, bn_layer=True):
-        super(NonLocalBlock2D, self).__init__()
+"""0.194s / batch (must be FP32)"""
+"""
 
-        self.sub_sample = sub_sample
+add position (only one position)
+"""
 
-        self.in_channels = in_channels
-        self.inter_channels = in_channels//reduction
+__all__ = ['prm3_resnet18','prm3_resnet34','prm3_resnet50','prm3_resnet101','prm3_resnet152']
 
-        conv_nd = nn.Conv2d
-        max_pool_layer = nn.MaxPool2d(kernel_size=(2, 2))
-        bn = nn.BatchNorm2d
-        self.g = conv_nd(in_channels=self.in_channels, out_channels=self.inter_channels,
-                         kernel_size=1, stride=1, padding=0)
-
-        self.W = nn.Sequential(
-            conv_nd(in_channels=self.inter_channels, out_channels=self.in_channels,
-                    kernel_size=1, stride=1, padding=0),
-            bn(self.in_channels)
+"""
+group is the number of selected points.
+"""
+class PRMLayer(nn.Module):
+    def __init__(self, channel,reduction=16,groups=1):
+        super(PRMLayer, self).__init__()
+        self.groups = groups
+        self.reduction = reduction
+        self.query = nn.Conv2d(channel, channel//reduction, 1, groups=groups)
+        self.key   = nn.Conv2d(channel, channel//reduction, 1, groups=groups)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+        self.weight = Parameter(torch.zeros(1,self.groups,1,1))
+        self.bias = Parameter(torch.ones(1,self.groups,1,1))
+        self.sig = nn.Sigmoid()
+        self.distance_embedding = nn.Sequential(
+            nn.Conv2d(2,8,1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(8,1,1)
         )
-        nn.init.constant_(self.W[1].weight, 0)
-        nn.init.constant_(self.W[1].bias, 0)
-
-
-        self.theta = conv_nd(in_channels=self.in_channels, out_channels=self.inter_channels,
-                             kernel_size=1, stride=1, padding=0)
-        self.phi = conv_nd(in_channels=self.in_channels, out_channels=self.inter_channels,
-                           kernel_size=1, stride=1, padding=0)
-
-        if sub_sample:
-            self.g = nn.Sequential(self.g, max_pool_layer)
-            self.phi = nn.Sequential(self.phi, max_pool_layer)
+        self.gather = nn.Conv2d(channel//reduction, groups, 1,groups=groups)
 
     def forward(self, x):
-        '''
-        :param x: (b, c, t, h, w)
-        :return:
-        '''
 
-        batch_size = x.size(0)
+        b,c,h,w = x.size()
+        # Similarity function
+        query = self.query(x)
+        position_mask = self.get_position_mask(x,b,h,w,self.groups)
+        key = self.key(x)
+        key_value, key_position = self.get_key_position(key,self.groups) # shape [b*num,2,1,1]
 
-        g_x = self.g(x).view(batch_size, self.inter_channels, -1)
-        g_x = g_x.permute(0, 2, 1) #[b,w/2*h/2,in_c]
+        Distance = abs(position_mask-key_position)+1e-5
+        Distance = (self.distance_embedding(Distance)).reshape(b,self.groups,h,w)
 
-        theta_x = self.theta(x).view(batch_size, self.inter_channels, -1)
-        theta_x = theta_x.permute(0, 2, 1) # [b,w*h,in_c]
-        phi_x = self.phi(x).view(batch_size, self.inter_channels, -1) # [b,in_c,w/2*h/2]
-        f = torch.matmul(theta_x, phi_x) # [b,w*h,w/2*h/2]
-        f_div_C = F.softmax(f, dim=-1) #[b,w*h,w/2*h/2]
 
-        y = torch.matmul(f_div_C, g_x) # [b,w*h,in_c]
-        y = y.permute(0, 2, 1).contiguous() # [b,in_c,w*h]
-        y = y.view(batch_size, self.inter_channels, *x.size()[2:]) # [b,in_c,w,h]
-        W_y = self.W(y) # [b,in_c,w,h]
-        z = W_y + x
 
-        return z
+
+
+
+        query = query.view(b*self.groups,(c//self.reduction)//self.groups,h*w)
+        key_value = key_value.view(b*self.groups,(c//self.reduction)//self.groups,1)
+        similarity = self.get_similarity(query,key_value,mode='l1norm')
+        similarity = similarity.view(b,self.groups,h,w)
+
+
+
+
+
+
+
+
+
+        context = (similarity+Distance).view(b, self.groups, -1)
+        # context = context - context.mean(dim=2, keepdim=True)
+        std = context.std(dim=2, keepdim=True) + 1e-5
+        context = (context / std).view(b,self.groups,h,w)
+        # affine function
+        context = context * self.weight + self.bias
+        context = context.view(b*self.groups,1,h,w)\
+            .expand(b*self.groups, c//self.groups, h, w).reshape(b,c,h,w)
+        value = x*self.sig(context)
+
+        return value
+
+
+    def get_position_mask(self,x,b,h,w,number):
+        mask = (x[0, 0, :, :] != 2020).nonzero()
+        mask = (mask.reshape(h,w, 2)).permute(2,0,1).expand(b*number,2,h,w)
+        return mask
+
+    def get_key_position(self, key,groups):
+        b,c,h,w = key.size()
+        value = key.view(b*groups,c//groups,h,w)
+        sumvalue = value.sum(dim=1,keepdim=True)
+        maxvalue = self.max_pool(sumvalue)
+        position = (sumvalue==maxvalue).nonzero()
+        target_value = value[position[:, 0], :, position[:, 2], position[:, 3]]
+        target_value = target_value.view(b, c, 1, 1)
+        position = (position[:,2:4]).unsqueeze(-1).unsqueeze(-1)
+
+        return target_value, position
+
+    def get_similarity(self,query, key_value, mode='dotproduct'):
+        if mode == 'dotproduct':
+            similarity = torch.matmul(key_value.permute(0, 2, 1), query)
+        elif mode == 'l1norm':
+            similarity = -(abs(query - key_value)).sum(dim=1)
+        elif mode == 'gaussian':
+            # Gaussian Similarity (No recommanded, too sensitive to noise)
+            similarity = torch.exp(torch.matmul(key_value.permute(0, 2, 1), query))
+            similarity[similarity == float("Inf")] = 0
+            similarity[similarity <= 1e-9] = 1e-9
+        else:
+            similarity = torch.matmul(key_value.permute(0, 2, 1), query)
+        return similarity
+
+
+
+
+
+
+
 
 
 def conv3x3(in_planes, out_planes, stride=1):
@@ -93,6 +143,7 @@ class BasicBlock(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes)
         self.downsample = downsample
         self.stride = stride
+        self.prm  = PRMLayer(planes)
 
     def forward(self, x):
         identity = x
@@ -103,6 +154,7 @@ class BasicBlock(nn.Module):
 
         out = self.conv2(out)
         out = self.bn2(out)
+        out = self.prm(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
@@ -124,6 +176,7 @@ class Bottleneck(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes)
         self.conv3 = conv1x1(planes, planes * self.expansion)
         self.bn3 = nn.BatchNorm2d(planes * self.expansion)
+        self.prm  = PRMLayer(planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
@@ -141,6 +194,7 @@ class Bottleneck(nn.Module):
 
         out = self.conv3(out)
         out = self.bn3(out)
+        out = self.prm(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
@@ -167,7 +221,6 @@ class ResNet(nn.Module):
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
-        self.non_local = NonLocalBlock2D(in_channels=2048)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -213,9 +266,6 @@ class ResNet(nn.Module):
         x = self.layer3(x)
         x = self.layer4(x)
 
-        # non local
-        x= self.non_local(x)
-
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
         x = self.fc(x)
@@ -223,7 +273,8 @@ class ResNet(nn.Module):
         return x
 
 
-def nl_resnet18(pretrained=False, **kwargs):
+
+def prm3_resnet18(pretrained=False, **kwargs):
     """Constructs a ResNet-18 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -232,7 +283,7 @@ def nl_resnet18(pretrained=False, **kwargs):
     return model
 
 
-def nl_resnet34(pretrained=False, **kwargs):
+def prm3_resnet34(pretrained=False, **kwargs):
     """Constructs a ResNet-34 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -241,7 +292,7 @@ def nl_resnet34(pretrained=False, **kwargs):
     return model
 
 
-def nl_resnet50(pretrained=False, **kwargs):
+def prm3_resnet50(pretrained=False, **kwargs):
     """Constructs a ResNet-50 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -250,7 +301,7 @@ def nl_resnet50(pretrained=False, **kwargs):
     return model
 
 
-def nl_resnet101(pretrained=False, **kwargs):
+def prm3_resnet101(pretrained=False, **kwargs):
     """Constructs a ResNet-101 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -259,7 +310,7 @@ def nl_resnet101(pretrained=False, **kwargs):
     return model
 
 
-def nl_resnet152(pretrained=False, **kwargs):
+def prm3_resnet152(pretrained=False, **kwargs):
     """Constructs a ResNet-152 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -268,22 +319,26 @@ def nl_resnet152(pretrained=False, **kwargs):
     return model
 
 
+
+
+
+
 def demo():
     st = time.perf_counter()
     for i in range(1):
-        net = nl_resnet50(num_classes=1000)
-        y = net(torch.randn(2, 3, 224,224))
-        print(y.size())
+        net = prm3_resnet18(num_classes=1000)
+        y = net(torch.randn(1, 3, 224,224))
+        print(i)
     print("CPU time: {}".format(time.perf_counter() - st))
 
 def demo2():
     st = time.perf_counter()
     for i in range(100):
-        net = nl_resnet50(num_classes=1000).cuda()
+        net = prm3_resnet50(num_classes=1000).cuda()
         y = net(torch.randn(2, 3, 224,224).cuda())
-        print(y.size())
-    print("CPU time: {}".format(time.perf_counter() - st))
+        print(i)
+        # print("Allocated: {}".format(torch.cuda.memory_allocated()))
+    print("GPU time: {}".format(time.perf_counter() - st))
 
-# demo()
+demo()
 # demo2()
-
