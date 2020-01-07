@@ -21,13 +21,13 @@ __all__ = ['prm3_resnet18','prm3_resnet34','prm3_resnet50','prm3_resnet101','prm
 group is the number of selected points.
 """
 class PRMLayer(nn.Module):
-    def __init__(self, channel,reduction=16,groups=1):
+    def __init__(self, channel,reduction=16,groups=2):
         super(PRMLayer, self).__init__()
         self.groups = groups
         self.reduction = reduction
         self.query = nn.Conv2d(channel, channel//reduction, 1, groups=groups)
         self.key   = nn.Conv2d(channel, channel//reduction, 1, groups=groups)
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1,return_indices=True)
         self.weight = Parameter(torch.zeros(1,self.groups,1,1))
         self.bias = Parameter(torch.ones(1,self.groups,1,1))
         self.sig = nn.Sigmoid()
@@ -89,13 +89,20 @@ class PRMLayer(nn.Module):
         b,c,h,w = key.size()
         value = key.view(b*groups,c//groups,h,w)
         sumvalue = value.sum(dim=1,keepdim=True)
-        maxvalue = self.max_pool(sumvalue)
-        position = (sumvalue==maxvalue).nonzero()
-        target_value = value[position[:, 0], :, position[:, 2], position[:, 3]]
-        target_value = target_value.view(b, c, 1, 1)
-        position = (position[:,2:4]).unsqueeze(-1).unsqueeze(-1)
+        maxvalue,maxposition = self.max_pool(sumvalue)
+        t_position = torch.cat((maxposition//w,maxposition % w),dim=1)
 
-        return target_value, position
+        t_value = value[torch.arange(b*groups),:,t_position[:,0,0,0],t_position[:,1,0,0]]
+        t_value = t_value.view(b, c, 1, 1)
+
+
+        # position = (sumvalue==maxvalue).nonzero()
+        # target_value = value[position[:, 0], :, position[:, 2], position[:, 3]]
+        # target_value = target_value.view(b, c, 1, 1)
+        # position = (position[:,2:4]).unsqueeze(-1).unsqueeze(-1)
+        #
+        # return target_value, position
+        return t_value, t_position
 
     def get_similarity(self,query, key_value, mode='dotproduct'):
         if mode == 'dotproduct':
