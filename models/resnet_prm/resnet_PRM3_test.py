@@ -42,13 +42,31 @@ class PRMLayer(nn.Module):
 
         b,c,h,w = x.size()
         # Similarity function
-        query = self.query(x)
-        position_mask = self.get_position_mask(x,b,h,w,self.groups)
-        key = self.key(x)
-        key_value, key_position = self.get_key_position(key,self.groups) # shape [b*num,2,1,1]
+        st = time.perf_counter()
+        for i in range(1000):
+            query = self.query(x)
+        print("query          time: {}".format(time.perf_counter() - st))
 
-        Distance = abs(position_mask-key_position)+1e-5
-        Distance = (self.distance_embedding(Distance)).reshape(b,self.groups,h,w)
+        st = time.perf_counter()
+        for i in range(1000):
+            position_mask = self.get_position_mask(x,b,h,w,self.groups)
+        print("posi mask      time: {}".format(time.perf_counter() - st))
+
+        st = time.perf_counter()
+        for i in range(1000):
+            key = self.key(x)
+        print("key            time: {}".format(time.perf_counter() - st))
+
+        st = time.perf_counter()
+        for i in range(1000):
+            key_value, key_position = self.get_key_position(key,self.groups) # shape [b*num,2,1,1]
+        print("key val/pos    time: {}".format(time.perf_counter() - st))
+
+        st = time.perf_counter()
+        for i in range(1000):
+            Distance = abs(position_mask-key_position)+1e-5
+            Distance = (self.distance_embedding(Distance)).reshape(b,self.groups,h,w)
+        print("distance       time: {}".format(time.perf_counter() - st))
 
 
 
@@ -57,27 +75,29 @@ class PRMLayer(nn.Module):
 
         query = query.view(b*self.groups,(c//self.reduction)//self.groups,h*w)
         key_value = key_value.view(b*self.groups,(c//self.reduction)//self.groups,1)
-        similarity = self.get_similarity(query,key_value,mode=self.mode)
-        similarity = similarity.view(b,self.groups,h,w)
+
+        st = time.perf_counter()
+        for i in range(1000):
+            similarity = self.get_similarity(query,key_value,mode=self.mode)
+            similarity = similarity.view(b,self.groups,h,w)
+        print("similarity     time: {}".format(time.perf_counter() - st))
 
 
-
-
-
-
-
-
-
-        context = (similarity+Distance).view(b, self.groups, -1)
-        # context = context - context.mean(dim=2, keepdim=True)
-        std = context.std(dim=2, keepdim=True) + 1e-5
-        context = (context / std).view(b,self.groups,h,w)
+        st = time.perf_counter()
+        for i in range(1000):
+            context = (similarity+Distance).view(b, self.groups, -1)
+            # context = context - context.mean(dim=2, keepdim=True)
+            std = context.std(dim=2, keepdim=True) + 1e-5
+            context = (context / std).view(b,self.groups,h,w)
+        print("std           time: {}".format(time.perf_counter() - st))
         # affine function
-        context = context * self.weight + self.bias
-        context = context.view(b*self.groups,1,h,w)\
-            .expand(b*self.groups, c//self.groups, h, w).reshape(b,c,h,w)
-        value = x*self.sig(context)
-
+        st = time.perf_counter()
+        for i in range(1000):
+            context = context * self.weight + self.bias
+            context = context.view(b*self.groups,1,h,w)\
+                .expand(b*self.groups, c//self.groups, h, w).reshape(b,c,h,w)
+            value = x*self.sig(context)
+        print("affine        time: {}".format(time.perf_counter() - st))
         return value
 
 
@@ -347,5 +367,5 @@ def demo2():
         # print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-demo()
-# demo2()
+# demo()
+demo2()
