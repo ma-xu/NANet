@@ -325,8 +325,8 @@ def prm3_resnet152(pretrained=False, **kwargs):
 def demo():
     st = time.perf_counter()
     for i in range(1):
-        net = prm3_resnet18(num_classes=1000)
-        y = net(torch.randn(1, 3, 224,224))
+        net = prm3_resnet50(num_classes=1000)
+        y = net(torch.randn(2, 3, 224,224))
         print(i)
     print("CPU time: {}".format(time.perf_counter() - st))
 
@@ -339,5 +339,5 @@ def demo2():
         # print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-# demo()
+demo()
 # demo2()
