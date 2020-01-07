@@ -364,10 +364,10 @@ def demo2():
     st = time.perf_counter()
     for i in range(1):
         net = prm3_resnet50(num_classes=1000).cuda()
-        y = net(torch.randn(2, 3, 224,224).cuda())
+        y = net(torch.randn(32, 3, 224,224).cuda())
         print(i)
         # print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-demo()
+demo2()
 # demo2()
