@@ -93,10 +93,10 @@ class PRMLayer(nn.Module):
         # affine function
         st = time.perf_counter()
         for i in range(1000):
-            context = context * self.weight + self.bias
-            context = context.view(b*self.groups,1,h,w)\
+            affine = context * self.weight + self.bias
+            affine = affine.view(b*self.groups,1,h,w)\
                 .expand(b*self.groups, c//self.groups, h, w).reshape(b,c,h,w)
-            value = x*self.sig(context)
+            value = x*self.sig(affine)
         print("affine        time: {}".format(time.perf_counter() - st))
         return value
 
