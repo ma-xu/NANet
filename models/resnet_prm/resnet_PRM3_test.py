@@ -98,6 +98,8 @@ class PRMLayer(nn.Module):
                 .expand(b*self.groups, c//self.groups, h, w).reshape(b,c,h,w)
             value = x*self.sig(affine)
         print("affine        time: {}".format(time.perf_counter() - st))
+        print("_______________")
+        print("_______________")
         return value
 
 
