@@ -21,7 +21,7 @@ __all__ = ['prm_resnet18','prm_resnet34','prm_resnet50','prm_resnet101','prm_res
 group is the number of selected points.
 """
 class PRMLayer(nn.Module):
-    def __init__(self, channel,reduction=8,groups=8,mode='l1norm'):
+    def __init__(self, channel,reduction=16,groups=4,mode='l1norm'):
         super(PRMLayer, self).__init__()
         self.mode = mode
         self.groups = groups
@@ -342,5 +342,5 @@ def demo2():
         # print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-demo()
+# demo()
 # demo2()
