@@ -15,13 +15,13 @@ import time
 add position (only one position)
 """
 
-__all__ = ['prm3_resnet18','prm3_resnet34','prm3_resnet50','prm3_resnet101','prm3_resnet152']
+__all__ = ['prm_resnet18','prm_resnet34','prm_resnet50','prm_resnet101','prm_resnet152']
 
 """
 group is the number of selected points.
 """
 class PRMLayer(nn.Module):
-    def __init__(self, channel,reduction=16,groups=2,mode='l1norm'):
+    def __init__(self, channel,reduction=8,groups=8,mode='l1norm'):
         super(PRMLayer, self).__init__()
         self.mode = mode
         self.groups = groups
@@ -62,16 +62,10 @@ class PRMLayer(nn.Module):
 
 
 
-
-
-
-
-
-
         context = (similarity+Distance).view(b, self.groups, -1)
         # context = context - context.mean(dim=2, keepdim=True)
         std = context.std(dim=2, keepdim=True) + 1e-5
-        context = (context / std).view(b,self.groups,h,w)
+        context = ((context-context.mean(dim=2,keepdim=True))/ std).view(b,self.groups,h,w)
         # affine function
         context = context * self.weight + self.bias
         context = context.view(b*self.groups,1,h,w)\
@@ -87,36 +81,14 @@ class PRMLayer(nn.Module):
         return mask
 
     def get_key_position(self, key,groups):
-        st = time.perf_counter()
-        for i in range(1000):
-            b,c,h,w = key.size()
-        print("size time: {}".format(time.perf_counter() - st))
+        b,c,h,w = key.size()
+        value = key.view(b*groups,c//groups,h,w)
+        sumvalue = value.sum(dim=1,keepdim=True)
+        maxvalue,maxposition = self.max_pool(sumvalue)
+        t_position = torch.cat((maxposition//w,maxposition % w),dim=1)
 
-        st = time.perf_counter()
-        for i in range(1000):
-            value = key.view(b*groups,c//groups,h,w)
-        print("size      time: {}".format(time.perf_counter() - st))
-
-        st = time.perf_counter()
-        for i in range(1000):
-            sumvalue = value.sum(dim=1,keepdim=True)
-        print("sumvalue  time: {}".format(time.perf_counter() - st))
-
-        st = time.perf_counter()
-        for i in range(1000):
-            maxvalue,maxposition = self.max_pool(sumvalue)
-        print("pool      time: {}".format(time.perf_counter() - st))
-
-        st = time.perf_counter()
-        for i in range(1000):
-            t_position = torch.cat((maxposition//w,maxposition % w),dim=1)
-        print("t_po      time: {}".format(time.perf_counter() - st))
-
-        st = time.perf_counter()
-        for i in range(1000):
-            t_value = value[torch.arange(b*groups),:,t_position[:,0,0,0],t_position[:,1,0,0]]
-            t_value = t_value.view(b, c, 1, 1)
-        print("t_value   time: {}".format(time.perf_counter() - st))
+        t_value = value[torch.arange(b*groups),:,t_position[:,0,0,0],t_position[:,1,0,0]]
+        t_value = t_value.view(b, c, 1, 1)
 
 
         # position = (sumvalue==maxvalue).nonzero()
@@ -303,7 +275,7 @@ class ResNet(nn.Module):
 
 
 
-def prm3_resnet18(pretrained=False, **kwargs):
+def prm_resnet18(pretrained=False, **kwargs):
     """Constructs a ResNet-18 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -312,7 +284,7 @@ def prm3_resnet18(pretrained=False, **kwargs):
     return model
 
 
-def prm3_resnet34(pretrained=False, **kwargs):
+def prm_resnet34(pretrained=False, **kwargs):
     """Constructs a ResNet-34 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -321,7 +293,7 @@ def prm3_resnet34(pretrained=False, **kwargs):
     return model
 
 
-def prm3_resnet50(pretrained=False, **kwargs):
+def prm_resnet50(pretrained=False, **kwargs):
     """Constructs a ResNet-50 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -330,7 +302,7 @@ def prm3_resnet50(pretrained=False, **kwargs):
     return model
 
 
-def prm3_resnet101(pretrained=False, **kwargs):
+def prm_resnet101(pretrained=False, **kwargs):
     """Constructs a ResNet-101 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -339,7 +311,7 @@ def prm3_resnet101(pretrained=False, **kwargs):
     return model
 
 
-def prm3_resnet152(pretrained=False, **kwargs):
+def prm_resnet152(pretrained=False, **kwargs):
     """Constructs a ResNet-152 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -355,7 +327,7 @@ def prm3_resnet152(pretrained=False, **kwargs):
 def demo():
     st = time.perf_counter()
     for i in range(1):
-        net = prm3_resnet50(num_classes=1000)
+        net = prm_resnet50(num_classes=1000)
         y = net(torch.randn(2, 3, 224,224))
         print(i)
     print("CPU time: {}".format(time.perf_counter() - st))
@@ -363,11 +335,11 @@ def demo():
 def demo2():
     st = time.perf_counter()
     for i in range(1):
-        net = prm3_resnet50(num_classes=1000).cuda()
-        y = net(torch.randn(32, 3, 224,224).cuda())
+        net = prm_resnet50(num_classes=1000).cuda()
+        y = net(torch.randn(2, 3, 224,224).cuda())
         print(i)
         # print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-demo2()
+# demo()
 # demo2()
