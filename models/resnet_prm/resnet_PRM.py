@@ -47,7 +47,7 @@ class PRMLayer(nn.Module):
         key = self.key(x)
         key_value, key_position = self.get_key_position(key,self.groups) # shape [b*num,2,1,1]
 
-        Distance = abs(position_mask-key_position)
+        Distance = abs(position_mask-key_position)+1e-3
         Distance = (self.distance_embedding(Distance)).reshape(b,self.groups,h,w)
 
 
