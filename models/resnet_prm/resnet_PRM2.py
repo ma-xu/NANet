@@ -64,7 +64,7 @@ class PRMLayer(nn.Module):
         context = similarity.view(b, self.groups, -1)
         # context = (similarity+Distance).view(b, self.groups, -1)
         # context = context - context.mean(dim=2, keepdim=True)
-        std = context.std(dim=2, keepdim=True) + 1e-5
+        std = context.std(dim=2, keepdim=True) + 1e-7
         context = ((context-context.mean(dim=2,keepdim=True))/ std).view(b,self.groups,h,w)
         # affine function
         context = context * self.weight + self.bias
