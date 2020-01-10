@@ -7,6 +7,13 @@ import torch.nn as nn
 import torchvision.models
 
 
+
+net = nn.Conv2d(64,32,1,groups=16)
+x=torch.rand(1,64,3,3)
+y = net(x)
+print(y)
+
+
 max_pooling2 = nn.AdaptiveMaxPool2d(1,return_indices=True)
 
 
