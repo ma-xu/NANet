@@ -15,7 +15,7 @@ import time
 add position (only one position)
 """
 
-__all__ = ['prm_16x1_dotproduct_resnet50', 'prm_16x4_dotproduct_resnet50']
+__all__ = ['prm_16x1_dotproduct_resnet50','prm_16x1_l1norm_resnet50', 'prm_16x4_dotproduct_resnet50']
 
 """
 group is the number of selected points.
@@ -285,6 +285,14 @@ def prm_16x4_l1norm_resnet50(pretrained=False, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
     model = ResNet(Bottleneck, [3, 4, 6, 3],prm_r=16,prm_g=4,prm_mode='l1norm', **kwargs)
+    return model
+
+def prm_16x1_l1norm_resnet50(pretrained=False, **kwargs):
+    """Constructs a ResNet-50 model.
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = ResNet(Bottleneck, [3, 4, 6, 3],prm_r=16,prm_g=1,prm_mode='l1norm', **kwargs)
     return model
 
 def prm_16x4_dotproduct_resnet50(pretrained=False, **kwargs):
