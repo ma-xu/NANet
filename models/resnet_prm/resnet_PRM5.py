@@ -12,7 +12,7 @@ import time
 """0.194s / batch (must be FP32)"""
 """
 
-
+add position (only one position)
 """
 
 __all__ = ['prm5_resnet18','prm5_resnet34','prm5_resnet50','prm5_resnet101','prm5_resnet152']
@@ -342,5 +342,5 @@ def demo2():
         # print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-demo()
+# demo()
 # demo2()
