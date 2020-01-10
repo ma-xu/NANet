@@ -13,3 +13,5 @@ from .resnet_PRM4 import *
 from .resnet_PRM5 import *
 
 from .resnet_PRM6 import *
+
+from .resnet_PRM7 import *
