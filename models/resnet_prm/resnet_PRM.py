@@ -46,7 +46,7 @@ class PRMLayer(nn.Module):
         position_mask = self.get_position_mask(x,b,h,w,self.groups)
         key = self.key(x)
         key_value, key_position = self.get_key_position(key,self.groups) # shape [b*num,2,1,1]
-        print("Key position is: {}".format(key_position))
+        print("Key position is: {}".format(key_position/h))
 
         Distance = abs(position_mask-key_position)
         Distance = Distance.type(key.type())
