@@ -20,3 +20,7 @@ from .resnet_PRM7 import *
 from .resnet_PRM8 import *
 
 from .resnet_PRMS import *
+
+
+# distance add e^(-x)
+from .resnet_PRM9 import *
