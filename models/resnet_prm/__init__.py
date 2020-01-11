@@ -18,3 +18,5 @@ from .resnet_PRM7 import *
 
 # remove distance
 from .resnet_PRM8 import *
+
+from .resnet_PRMS import *
