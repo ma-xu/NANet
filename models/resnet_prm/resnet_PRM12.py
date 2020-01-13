@@ -45,7 +45,6 @@ class PRMLayer(nn.Module):
         key_value = key_value.view(b*self.groups,(c//self.reduction)//self.groups,1)
         similarity = self.get_similarity(query,key_value,mode=self.mode)
 
-        similarity = self.sig(similarity.unsqueeze(dim=1))
         context = (similarity*key_value).reshape(b,c//self.reduction,h,w)
         context = self.transform(context/((c//self.reduction)//self.groups))
         return x+context
@@ -77,7 +76,7 @@ class PRMLayer(nn.Module):
 
     def get_similarity(self,query, key_value, mode='dotproduct'):
         if mode == 'dotproduct':
-            similarity = (torch.matmul(key_value.permute(0, 2, 1), query)).squeeze(dim=1)
+            similarity = (torch.matmul(key_value.permute(0, 2, 1), query))
         elif mode == 'l1norm':
             similarity = -(abs(query - key_value)).sum(dim=1)
         elif mode == 'gaussian':
@@ -317,5 +316,5 @@ def demo2():
         # print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-demo()
+# demo()
 # demo2()
