@@ -45,8 +45,10 @@ class PRMLayer(nn.Module):
         key_value = key_value.view(b*self.groups,(c//self.reduction)//self.groups,1)
         similarity = self.get_similarity(query,key_value,mode=self.mode)
 
+        similarity = self.sig(similarity)
+
         context = (similarity*key_value).reshape(b,c//self.reduction,h,w)
-        context = self.transform(context/((c//self.reduction)//self.groups))
+        context = self.transform(context)
         return x+context
 
 
