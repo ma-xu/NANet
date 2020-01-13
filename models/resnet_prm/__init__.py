@@ -28,3 +28,5 @@ from .resnet_PRM9 import *
 from .resnet_PRM10 import *
 
 from .resnet_PRM11 import *
+
+from .resnet_PRM12 import *

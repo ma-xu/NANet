@@ -15,68 +15,40 @@ import time
 Replace the distance function
 """
 
-__all__ = ['prm9_resnet18','prm9_resnet34','prm9_resnet50','prm9_resnet101','prm9_resnet152']
+__all__ = ['prm12_resnet18','prm12_resnet34','prm12_resnet50','prm12_resnet101','prm12_resnet152']
 
 """
 group is the number of selected points.
 """
 class PRMLayer(nn.Module):
-    def __init__(self, channel,reduction=16,groups=4,mode='l1norm'):
+    def __init__(self, channel,reduction=4,groups=32,mode='dotproduct'):
         super(PRMLayer, self).__init__()
         self.mode = mode
-        self.groups = groups
+        self.groups = min(groups,channel//reduction)
         self.reduction = reduction
-        self.query = nn.Conv2d(channel, channel//reduction, 1, groups=groups)
-        self.key   = nn.Conv2d(channel, channel//reduction, 1, groups=groups)
+        self.query = nn.Conv2d(channel, channel//reduction, 1, groups=self.groups)
+        self.key   = nn.Conv2d(channel, channel//reduction, 1, groups=self.groups)
         self.max_pool = nn.AdaptiveMaxPool2d(1,return_indices=True)
-        self.weight = Parameter(torch.zeros(1,self.groups,1,1))
-        self.bias = Parameter(torch.ones(1,self.groups,1,1))
         self.sig = nn.Sigmoid()
-        self.distance_embedding = nn.Sequential(
-            nn.Conv2d(2,8,1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(8,1,1)
-        )
-        self.theta = Parameter(torch.zeros(1))
+        self.transform = nn.Conv2d( channel//reduction,channel, 1, groups=self.groups)
+
 
     def forward(self, x):
 
         b,c,h,w = x.size()
         # Similarity function
         query = self.query(x)
-        position_mask = self.get_position_mask(x,b,h,w,self.groups)
         key = self.key(x)
         key_value, key_position = self.get_key_position(key,self.groups) # shape [b*num,2,1,1]
-
-        Distance = abs(position_mask-key_position)
-        Distance = Distance.type(key.type())
-        # add e^(-x), means closer more important
-        Distance=torch.exp(-Distance*self.theta)
-        Distance = (self.distance_embedding(Distance)).reshape(b,self.groups,h,w)
-
-
-
-
-
 
         query = query.view(b*self.groups,(c//self.reduction)//self.groups,h*w)
         key_value = key_value.view(b*self.groups,(c//self.reduction)//self.groups,1)
         similarity = self.get_similarity(query,key_value,mode=self.mode)
-        similarity = similarity.view(b,self.groups,h,w)
 
-
-
-        context = (similarity+Distance).view(b, self.groups, -1)
-        context = context - context.mean(dim=2, keepdim=True)
-        std = context.std(dim=2, keepdim=True) + 1e-5
-        context = (context/std).view(b,self.groups,h,w)
-        # affine function
-        context = context * self.weight + self.bias
-        context = context.view(b*self.groups,1,h,w)\
-            .expand(b*self.groups, c//self.groups, h, w).reshape(b,c,h,w)
-        value = x*self.sig(context)
-
-        return value
+        similarity = self.sig(similarity.unsqueeze(dim=1))
+        context = (similarity*key_value).reshape(b,c//self.reduction,h,w)
+        context = self.transform(context/((c//self.reduction)//self.groups))
+        return x+context
 
 
     def get_position_mask(self,x,b,h,w,number):
@@ -105,7 +77,7 @@ class PRMLayer(nn.Module):
 
     def get_similarity(self,query, key_value, mode='dotproduct'):
         if mode == 'dotproduct':
-            similarity = torch.matmul(key_value.permute(0, 2, 1), query)
+            similarity = (torch.matmul(key_value.permute(0, 2, 1), query)).squeeze(dim=1)
         elif mode == 'l1norm':
             similarity = -(abs(query - key_value)).sum(dim=1)
         elif mode == 'gaussian':
@@ -279,7 +251,7 @@ class ResNet(nn.Module):
 
 
 
-def prm9_resnet18(pretrained=False, **kwargs):
+def prm12_resnet18(pretrained=False, **kwargs):
     """Constructs a ResNet-18 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -288,7 +260,7 @@ def prm9_resnet18(pretrained=False, **kwargs):
     return model
 
 
-def prm9_resnet34(pretrained=False, **kwargs):
+def prm12_resnet34(pretrained=False, **kwargs):
     """Constructs a ResNet-34 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -297,7 +269,7 @@ def prm9_resnet34(pretrained=False, **kwargs):
     return model
 
 
-def prm9_resnet50(pretrained=False, **kwargs):
+def prm12_resnet50(pretrained=False, **kwargs):
     """Constructs a ResNet-50 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -306,7 +278,7 @@ def prm9_resnet50(pretrained=False, **kwargs):
     return model
 
 
-def prm9_resnet101(pretrained=False, **kwargs):
+def prm12_resnet101(pretrained=False, **kwargs):
     """Constructs a ResNet-101 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -315,7 +287,7 @@ def prm9_resnet101(pretrained=False, **kwargs):
     return model
 
 
-def prm9_resnet152(pretrained=False, **kwargs):
+def prm12_resnet152(pretrained=False, **kwargs):
     """Constructs a ResNet-152 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -331,7 +303,7 @@ def prm9_resnet152(pretrained=False, **kwargs):
 def demo():
     st = time.perf_counter()
     for i in range(1):
-        net = prm9_resnet50(num_classes=1000)
+        net = prm12_resnet50(num_classes=1000)
         y = net(torch.randn(2, 3, 224,224))
         print(i)
     print("CPU time: {}".format(time.perf_counter() - st))
@@ -339,11 +311,11 @@ def demo():
 def demo2():
     st = time.perf_counter()
     for i in range(1):
-        net = prm9_resnet50(num_classes=1000).cuda()
+        net = prm12_resnet50(num_classes=1000).cuda()
         y = net(torch.randn(2, 3, 224,224).cuda())
         print(i)
         # print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-# demo()
+demo()
 # demo2()
