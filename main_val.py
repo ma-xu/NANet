@@ -55,7 +55,7 @@ parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet18',
                     ' (default: resnet18)')
 parser.add_argument('-j', '--workers', default=32, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
-parser.add_argument('--epochs', default=55, type=int, metavar='N',
+parser.add_argument('--epochs', default=60, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
