@@ -12,10 +12,10 @@ import time
 """0.194s / batch (must be FP32)"""
 """
 
-add position (only one position)
+Replace the distance function
 """
 
-__all__ = ['prm10s_16x1_l1norm_resnet50','prm10s_4x16_l1norm_resnet50']
+__all__ = ['prm13_resnet18','prm13_resnet34','prm13_resnet50','prm13_resnet101','prm13_resnet152']
 
 """
 group is the number of selected points.
@@ -24,14 +24,15 @@ class PRMLayer(nn.Module):
     def __init__(self, channel,reduction=16,groups=4,mode='l1norm'):
         super(PRMLayer, self).__init__()
         self.mode = mode
-        self.groups = min(groups,channel//reduction)
+        self.groups = groups
         self.reduction = reduction
-        self.query = nn.Conv2d(channel, channel//reduction, 1, groups=self.groups)
-        self.key   = nn.Conv2d(channel, channel//reduction, 1, groups=self.groups)
+        self.query = nn.Conv2d(channel, channel//reduction, 1, groups=groups)
+        self.key   = nn.Conv2d(channel, channel//reduction, 1, groups=groups)
         self.max_pool = nn.AdaptiveMaxPool2d(1,return_indices=True)
         self.weight = Parameter(torch.zeros(1,self.groups,1,1))
         self.bias = Parameter(torch.ones(1,self.groups,1,1))
         self.sig = nn.Sigmoid()
+        self.gap = nn.AdaptiveAvgPool2d(1)
         self.distance_embedding = nn.Sequential(
             nn.Conv2d(2,8,1),
             nn.ReLU(inplace=True),
@@ -66,7 +67,7 @@ class PRMLayer(nn.Module):
 
 
 
-        context = (similarity*torch.sigmoid(Distance)).view(b, self.groups, -1)
+        context = (similarity+Distance).view(b, self.groups, -1)
         context = context - context.mean(dim=2, keepdim=True)
         std = context.std(dim=2, keepdim=True) + 1e-5
         context = (context/std).view(b,self.groups,h,w)
@@ -93,7 +94,7 @@ class PRMLayer(nn.Module):
 
         t_value = value[torch.arange(b*groups),:,t_position[:,0,0,0],t_position[:,1,0,0]]
         t_value = t_value.view(b, c, 1, 1)
-
+        t_mean = self.gap(key)
 
         # position = (sumvalue==maxvalue).nonzero()
         # target_value = value[position[:, 0], :, position[:, 2], position[:, 3]]
@@ -101,7 +102,7 @@ class PRMLayer(nn.Module):
         # position = (position[:,2:4]).unsqueeze(-1).unsqueeze(-1)
         #
         # return target_value, position
-        return t_value, t_position
+        return t_value+t_mean, t_position
 
     def get_similarity(self,query, key_value, mode='dotproduct'):
         if mode == 'dotproduct':
@@ -116,6 +117,10 @@ class PRMLayer(nn.Module):
         else:
             similarity = torch.matmul(key_value.permute(0, 2, 1), query)
         return similarity
+
+
+
+
 
 
 
@@ -169,7 +174,7 @@ class BasicBlock(nn.Module):
 class Bottleneck(nn.Module):
     expansion = 4
 
-    def __init__(self, inplanes, planes, stride=1, downsample=None,prm_r=16,prm_g=4,prm_mode='l1norm'):
+    def __init__(self, inplanes, planes, stride=1, downsample=None):
         super(Bottleneck, self).__init__()
         self.conv1 = conv1x1(inplanes, planes)
         self.bn1 = nn.BatchNorm2d(planes)
@@ -177,7 +182,7 @@ class Bottleneck(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes)
         self.conv3 = conv1x1(planes, planes * self.expansion)
         self.bn3 = nn.BatchNorm2d(planes * self.expansion)
-        self.prm  = PRMLayer(planes * self.expansion,prm_r,prm_g,prm_mode)
+        self.prm  = PRMLayer(planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
@@ -208,7 +213,7 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, num_classes=1000, zero_init_residual=False, prm_r=16,prm_g=4,prm_mode='l1norm'):
+    def __init__(self, block, layers, num_classes=1000, zero_init_residual=False):
         super(ResNet, self).__init__()
         self.inplanes = 64
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
@@ -216,10 +221,10 @@ class ResNet(nn.Module):
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 64, layers[0],prm_r=prm_r,prm_g=prm_g,prm_mode=prm_mode)
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2,prm_r=prm_r,prm_g=prm_g,prm_mode=prm_mode)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2,prm_r=prm_r,prm_g=prm_g,prm_mode=prm_mode)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2,prm_r=prm_r,prm_g=prm_g,prm_mode=prm_mode)
+        self.layer1 = self._make_layer(block, 64, layers[0])
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
@@ -240,7 +245,7 @@ class ResNet(nn.Module):
                 elif isinstance(m, BasicBlock):
                     nn.init.constant_(m.bn2.weight, 0)
 
-    def _make_layer(self, block, planes, blocks, stride=1,prm_r=16,prm_g=4,prm_mode='l1norm'):
+    def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
@@ -249,10 +254,10 @@ class ResNet(nn.Module):
             )
 
         layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample,prm_r,prm_g,prm_mode))
+        layers.append(block(self.inplanes, planes, stride, downsample))
         self.inplanes = planes * block.expansion
         for _ in range(1, blocks):
-            layers.append(block(self.inplanes, planes,prm_r=prm_r,prm_g=prm_g,prm_mode=prm_mode))
+            layers.append(block(self.inplanes, planes))
 
         return nn.Sequential(*layers)
 
@@ -274,32 +279,51 @@ class ResNet(nn.Module):
         return x
 
 
-def prm10s_16x1_l1norm_resnet50(pretrained=False, **kwargs):
+
+def prm13_resnet18(pretrained=False, **kwargs):
+    """Constructs a ResNet-18 model.
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
+    return model
+
+
+def prm13_resnet34(pretrained=False, **kwargs):
+    """Constructs a ResNet-34 model.
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = ResNet(BasicBlock, [3, 4, 6, 3], **kwargs)
+    return model
+
+
+def prm13_resnet50(pretrained=False, **kwargs):
     """Constructs a ResNet-50 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = ResNet(Bottleneck, [3, 4, 6, 3],prm_r=16,prm_g=1,prm_mode='l1norm', **kwargs)
+    model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
     return model
 
 
-def prm10s_8x8_l1norm_resnet50(pretrained=False, **kwargs):
-    """Constructs a ResNet-50 model.
+def prm13_resnet101(pretrained=False, **kwargs):
+    """Constructs a ResNet-101 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = ResNet(Bottleneck, [3, 4, 6, 3],prm_r=8,prm_g=8,prm_mode='l1norm', **kwargs)
+    model = ResNet(Bottleneck, [3, 4, 23, 3], **kwargs)
     return model
 
 
-
-def prm10s_4x16_l1norm_resnet50(pretrained=False, **kwargs):
-    """Constructs a ResNet-50 model.
+def prm13_resnet152(pretrained=False, **kwargs):
+    """Constructs a ResNet-152 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = ResNet(Bottleneck, [3, 4, 6, 3],prm_r=4,prm_g=16,prm_mode='l1norm', **kwargs)
+    model = ResNet(Bottleneck, [3, 8, 36, 3], **kwargs)
     return model
+
 
 
 
@@ -308,7 +332,7 @@ def prm10s_4x16_l1norm_resnet50(pretrained=False, **kwargs):
 def demo():
     st = time.perf_counter()
     for i in range(1):
-        net = prm10s_16x1_l1norm_resnet50(num_classes=1000)
+        net = prm13_resnet50(num_classes=1000)
         y = net(torch.randn(2, 3, 224,224))
         print(i)
     print("CPU time: {}".format(time.perf_counter() - st))
@@ -316,11 +340,11 @@ def demo():
 def demo2():
     st = time.perf_counter()
     for i in range(1):
-        net = prm10s_8x8_l1norm_resnet50(num_classes=1000).cuda()
+        net = prm13_resnet50(num_classes=1000).cuda()
         y = net(torch.randn(2, 3, 224,224).cuda())
         print(i)
         # print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-demo()
+# demo()
 # demo2()

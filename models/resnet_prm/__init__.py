@@ -33,3 +33,7 @@ from .resnet_PRM12 import *
 
 
 from .resnet_PRM10S import *
+
+
+from .resnet_PRM13 import *
+from .resnet_PRM14 import *
