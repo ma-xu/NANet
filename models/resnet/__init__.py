@@ -10,3 +10,4 @@ from .resnet_na2 import *
 from .resnet_na3 import *
 from .resnet_na4 import *
 from .resnet_na5 import *
+from .resnet_sge import *
