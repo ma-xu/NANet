@@ -33,11 +33,13 @@ class PRMLayer(nn.Module):
         self.bias = Parameter(torch.ones(1,self.groups,1,1))
         self.sig = nn.Sigmoid()
         self.gap = nn.AdaptiveAvgPool2d(1)
-        self.distance_embedding = nn.Sequential(
-            nn.Conv2d(2, 8, 1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(8, 1, 1)
-        )
+        # self.distance_embedding = nn.Sequential(
+        #     nn.Conv2d(2, 8, 1),
+        #     nn.ReLU(inplace=True),
+        #     nn.Conv2d(8, 1, 1)
+        # )
+        self.dis1 = Parameter(torch.rand(1,8,2,1,1))
+        self.dis2 = Parameter(torch.rand(1,1,8,1,1))
         self.theta = Parameter(torch.zeros(1))
 
     def forward(self, x):
@@ -54,7 +56,13 @@ class PRMLayer(nn.Module):
         Distance = Distance.type(query_value.type())
         # add e^(-x), means closer more important
         Distance = torch.exp(-Distance * self.theta)
-        Distance = (self.distance_embedding(Distance)).reshape(b*self.groups,1,-1)
+
+        ### distance embedding, for speed, niot using conv
+        Distance = (Distance.unsqueeze(dim=1)*self.dis1).sum(2) # Conv(2,8,1)
+        Distance[Distance<0]=0 # ReLU
+        Distance = (Distance.unsqueeze(dim=1) * self.dis2).sum(2)  # Conv(8,1,1)
+        Distance = Distance.reshape(b*self.groups,1,-1)
+        # Distance = (self.distance_embedding(Distance)).reshape(b*self.groups,1,-1)
 
         context = (similarity*self.sig(Distance)).view(b, self.groups, -1)
         context = context - context.mean(dim=2, keepdim=True)
@@ -322,5 +330,5 @@ def demo2():
         # print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-# demo()
+demo()
 # demo2()
