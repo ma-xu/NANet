@@ -41,11 +41,11 @@ class PRMLayer(nn.Module):
 
     def forward(self, x):
 
-        # b,c,h,w = x.size()
-        # # Similarity function
-        # query = self.query(x)
-        # position_mask = self.get_position_mask(x,b,h,w,self.groups)
-        # key = self.key(x)
+        b,c,h,w = x.size()
+        # Similarity function
+        query = self.query(x)
+        position_mask = self.get_position_mask(x,b,h,w,self.groups)
+        key = self.key(x)
         # key_value, key_position = self.get_key_position(key,self.groups) # shape [b*num,2,1,1]
         #
         # Distance = abs(position_mask-key_position)
