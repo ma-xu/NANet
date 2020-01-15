@@ -41,43 +41,43 @@ class PRMLayer(nn.Module):
 
     def forward(self, x):
 
-        b,c,h,w = x.size()
-        # Similarity function
-        query = self.query(x)
-        position_mask = self.get_position_mask(x,b,h,w,self.groups)
-        key = self.key(x)
-        key_value, key_position = self.get_key_position(key,self.groups) # shape [b*num,2,1,1]
+        # b,c,h,w = x.size()
+        # # Similarity function
+        # query = self.query(x)
+        # position_mask = self.get_position_mask(x,b,h,w,self.groups)
+        # key = self.key(x)
+        # key_value, key_position = self.get_key_position(key,self.groups) # shape [b*num,2,1,1]
+        #
+        # Distance = abs(position_mask-key_position)
+        # Distance = Distance.type(key.type())
+        # # add e^(-x), means closer more important
+        # # Distance=torch.exp(-Distance*self.theta)
+        # Distance = torch.exp(-Distance * self.theta)
+        # Distance = (self.distance_embedding(Distance)).reshape(b,self.groups,h,w)
+        #
+        #
+        #
+        #
+        #
+        #
+        # query = query.view(b*self.groups,(c//self.reduction)//self.groups,h*w)
+        # key_value = key_value.view(b*self.groups,(c//self.reduction)//self.groups,1)
+        # similarity = self.get_similarity(query,key_value,mode=self.mode)
+        # similarity = similarity.view(b,self.groups,h,w)
+        #
+        #
+        #
+        # context = (similarity*torch.sigmoid(Distance)).view(b, self.groups, -1)
+        # context = context - context.mean(dim=2, keepdim=True)
+        # std = context.std(dim=2, keepdim=True) + 1e-5
+        # context = (context/std).view(b,self.groups,h,w)
+        # # affine function
+        # context = context * self.weight + self.bias
+        # context = context.view(b*self.groups,1,h,w)\
+        #     .expand(b*self.groups, c//self.groups, h, w).reshape(b,c,h,w)
+        # value = x*self.sig(context)
 
-        Distance = abs(position_mask-key_position)
-        Distance = Distance.type(key.type())
-        # add e^(-x), means closer more important
-        # Distance=torch.exp(-Distance*self.theta)
-        Distance = torch.exp(-Distance * self.theta)
-        Distance = (self.distance_embedding(Distance)).reshape(b,self.groups,h,w)
-
-
-
-
-
-
-        query = query.view(b*self.groups,(c//self.reduction)//self.groups,h*w)
-        key_value = key_value.view(b*self.groups,(c//self.reduction)//self.groups,1)
-        similarity = self.get_similarity(query,key_value,mode=self.mode)
-        similarity = similarity.view(b,self.groups,h,w)
-
-
-
-        context = (similarity*torch.sigmoid(Distance)).view(b, self.groups, -1)
-        context = context - context.mean(dim=2, keepdim=True)
-        std = context.std(dim=2, keepdim=True) + 1e-5
-        context = (context/std).view(b,self.groups,h,w)
-        # affine function
-        context = context * self.weight + self.bias
-        context = context.view(b*self.groups,1,h,w)\
-            .expand(b*self.groups, c//self.groups, h, w).reshape(b,c,h,w)
-        value = x*self.sig(context)
-
-        return value
+        return x
 
 
     def get_position_mask(self,x,b,h,w,number):
