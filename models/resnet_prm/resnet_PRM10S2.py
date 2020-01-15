@@ -64,20 +64,20 @@ class PRMLayer(nn.Module):
         key_value = key_value.view(b*self.groups,(c//self.reduction)//self.groups,1)
         similarity = self.get_similarity(query,key_value,mode=self.mode)
         similarity = similarity.view(b,self.groups,h,w)
-        #
-        #
-        #
-        # context = (similarity*torch.sigmoid(Distance)).view(b, self.groups, -1)
-        # context = context - context.mean(dim=2, keepdim=True)
-        # std = context.std(dim=2, keepdim=True) + 1e-5
-        # context = (context/std).view(b,self.groups,h,w)
-        # # affine function
-        # context = context * self.weight + self.bias
-        # context = context.view(b*self.groups,1,h,w)\
-        #     .expand(b*self.groups, c//self.groups, h, w).reshape(b,c,h,w)
-        # value = x*self.sig(context)
 
-        return x
+
+
+        context = (similarity*torch.sigmoid(Distance)).view(b, self.groups, -1)
+        context = context - context.mean(dim=2, keepdim=True)
+        std = context.std(dim=2, keepdim=True) + 1e-5
+        context = (context/std).view(b,self.groups,h,w)
+        # affine function
+        context = context * self.weight + self.bias
+        context = context.view(b*self.groups,1,h,w)\
+            .expand(b*self.groups, c//self.groups, h, w).reshape(b,c,h,w)
+        value = x*self.sig(context)
+
+        return value
 
 
     def get_position_mask(self,x,b,h,w,number):
