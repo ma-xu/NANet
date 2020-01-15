@@ -53,7 +53,7 @@ class PRMLayer(nn.Module):
         # add e^(-x), means closer more important
         # Distance=torch.exp(-Distance*self.theta)
         Distance = torch.exp(-Distance * self.theta)
-        # Distance = (self.distance_embedding(Distance)).reshape(b,self.groups,h,w)
+        Distance = (self.distance_embedding(Distance)).reshape(b,self.groups,h,w)
         #
         #
         #
