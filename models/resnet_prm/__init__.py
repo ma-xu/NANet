@@ -39,3 +39,4 @@ from .resnet_PRM13 import *
 from .resnet_PRM14 import *
 
 from .resnet_PRM15 import *
+from .resnet_PRM15_2 import *
