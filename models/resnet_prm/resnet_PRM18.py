@@ -34,9 +34,9 @@ class PRMLayer(nn.Module):
         self.sig = nn.Sigmoid()
         self.gap = nn.AdaptiveAvgPool2d(1)
         self.distance_embedding = nn.Sequential(
-            nn.Conv2d(2, 8, 5,padding=2),
+            nn.Conv2d(2, 8, 1),
             nn.ReLU(inplace=True),
-            nn.Conv2d(8, 1, 5,padding=2)
+            nn.Conv2d(8, 1, 1)
         )
         self.theta = Parameter(torch.zeros(1))
 
