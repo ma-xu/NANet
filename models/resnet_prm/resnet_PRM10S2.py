@@ -54,16 +54,16 @@ class PRMLayer(nn.Module):
         # Distance=torch.exp(-Distance*self.theta)
         Distance = torch.exp(-Distance * self.theta)
         Distance = (self.distance_embedding(Distance)).reshape(b,self.groups,h,w)
-        #
-        #
-        #
-        #
-        #
-        #
-        # query = query.view(b*self.groups,(c//self.reduction)//self.groups,h*w)
-        # key_value = key_value.view(b*self.groups,(c//self.reduction)//self.groups,1)
-        # similarity = self.get_similarity(query,key_value,mode=self.mode)
-        # similarity = similarity.view(b,self.groups,h,w)
+
+
+
+
+
+
+        query = query.view(b*self.groups,(c//self.reduction)//self.groups,h*w)
+        key_value = key_value.view(b*self.groups,(c//self.reduction)//self.groups,1)
+        similarity = self.get_similarity(query,key_value,mode=self.mode)
+        similarity = similarity.view(b,self.groups,h,w)
         #
         #
         #
