@@ -24,13 +24,13 @@ __all__ = ['prm16_resnet18','prm16_resnet34','prm16_resnet50','prm16_resnet101',
 group is the number of selected points.
 """
 class PRMLayer(nn.Module):
-    def __init__(self,channel, reduction=2, groups=64,mode='dotproduct'):
+    def __init__(self,channel, reduction=16, groups=8,mode='dotproduct'):
         super(PRMLayer, self).__init__()
         self.mode = mode
         self.reduction = reduction
         self.groups = min(channel//reduction, groups)
         self.embedding = nn.Sequential(
-            nn.Conv2d(channel,channel//reduction,1,groups=self.groups),
+            nn.Conv2d(channel,channel//reduction,1),
             nn.BatchNorm2d(channel//reduction),
             nn.ReLU(inplace=True)
         )
