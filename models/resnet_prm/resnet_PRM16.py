@@ -29,7 +29,11 @@ class PRMLayer(nn.Module):
         self.mode = mode
         self.reduction = reduction
         self.groups = min(channel//reduction, groups)
-        self.embedding = nn.Conv2d(channel,channel//reduction,1,groups=self.groups)
+        self.embedding = nn.Sequential(
+            nn.Conv2d(channel,channel//reduction,1,groups=self.groups),
+            nn.BatchNorm2d(channel//reduction),
+            nn.ReLU(inplace=True)
+        )
         self.max_pool = nn.AdaptiveMaxPool2d(1,return_indices=True)
         self.weight = Parameter(torch.zeros(1,self.groups,1,1))
         self.bias = Parameter(torch.ones(1,self.groups,1,1))
