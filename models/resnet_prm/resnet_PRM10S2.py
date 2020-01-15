@@ -33,9 +33,9 @@ class PRMLayer(nn.Module):
         self.bias = Parameter(torch.ones(1,self.groups,1,1))
         self.sig = nn.Sigmoid()
         self.distance_embedding = nn.Sequential(
-            nn.Conv2d(2,64,1),
+            nn.Conv2d(2,8,1),
             nn.ReLU(inplace=True),
-            nn.Conv2d(64,1,1)
+            nn.Conv2d(8,1,1)
         )
         self.theta = Parameter(torch.zeros(1))
 
@@ -51,7 +51,8 @@ class PRMLayer(nn.Module):
         Distance = abs(position_mask-key_position)
         Distance = Distance.type(key.type())
         # add e^(-x), means closer more important
-        Distance=torch.exp(-Distance*self.theta)
+        # Distance=torch.exp(-Distance*self.theta)
+        Distance = torch.exp(-Distance * self.theta)
         Distance = (self.distance_embedding(Distance)).reshape(b,self.groups,h,w)
 
 
