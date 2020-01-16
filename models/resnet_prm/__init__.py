@@ -43,3 +43,4 @@ from .resnet_PRM15_2 import *
 from .resnet_PRM16 import *
 from .resnet_PRM17 import *
 from .resnet_PRM18 import *
+from .resnet_PRM19 import *
