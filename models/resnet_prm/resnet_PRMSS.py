@@ -336,7 +336,7 @@ def demo2():
         # print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-demo()
+# demo()
 # demo2()
 
 

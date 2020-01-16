@@ -34,13 +34,7 @@ class PRMLayer(nn.Module):
         self.gap = nn.AdaptiveAvgPool2d(1)
         self.one = Parameter(torch.ones(1,self.groups,1))
         self.zero = Parameter(torch.zeros(1, self.groups, 1))
-        self.distance_embedding = nn.Sequential(
-            nn.Conv2d(2, 8, 1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(8, 1, 1),
-            nn.Sigmoid()
-        )
-        self.theta = Parameter(torch.zeros(1))
+        self.theta = Parameter(torch.rand(1,2,1,1))
 
     def forward(self, x):
 
@@ -59,12 +53,12 @@ class PRMLayer(nn.Module):
 
         Distance = abs(position_mask - query_position)
         Distance = Distance.type(query_value.type())
+        Distance = torch.exp(-Distance * self.theta)
+        Distance  =(Distance.mean(dim=1)).view(b,self.groups, h*w)
         # # add e^(-x), means closer more important
         # Distance = torch.exp(-Distance * self.theta)
         # Distance = (self.distance_embedding(Distance)).reshape(b, self.groups, h*w)
-        Distance = (Distance.view(b, self.groups, 2, h * w)).permute(0, 2, 1, 3)
-        Distance = torch.exp(-Distance * self.theta)
-        Distance = (self.distance_embedding(Distance)).squeeze(dim=1)
+
 
 
         context = similarity*Distance
@@ -338,5 +332,5 @@ def demo2():
         # print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-demo()
+# demo()
 # demo2()
