@@ -47,3 +47,4 @@ from .resnet_PRM19 import *
 from .resnet_PRMSS import *
 from .resnet_PRM21 import *
 from .resnet_PRM22 import *
+from .resnet_PRM23 import *
