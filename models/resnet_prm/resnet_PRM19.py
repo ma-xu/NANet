@@ -27,7 +27,6 @@ class PRMLayer(nn.Module):
         self.groups = min(channel//reduction,groups)
         self.embed = nn.Conv2d(channel,channel//reduction,1)
         self.gap = nn.AdaptiveAvgPool2d(1)
-        self.position = Parameter(torch.ones(groups,2))
         self.alpha = Parameter(torch.zeros(1, groups, 1, 1))
         self.beta = Parameter(torch.ones(1, groups, 1, 1))
         self.sig = nn.Sigmoid()
