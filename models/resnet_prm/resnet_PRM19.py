@@ -21,11 +21,11 @@ __all__ = ['prm19_resnet18','prm19_resnet34','prm19_resnet50','prm19_resnet101',
 group is the number of selected points.
 """
 class PRMLayer(nn.Module):
-    def __init__(self, channel,reduction=8,groups=8,mode='dotproduct'):
+    def __init__(self, channel,reduction=8,groups=32,mode='dotproduct'):
         self.mode = mode
         super(PRMLayer, self).__init__()
         self.groups = min(channel//reduction,groups)
-        self.embed = nn.Conv2d(channel,channel//reduction,1)
+        self.embed = nn.Conv2d(channel,channel//reduction,1,groups=self.groups)
         self.gap = nn.AdaptiveAvgPool2d(1)
         self.alpha = Parameter(torch.zeros(1, groups, 1, 1))
         self.beta = Parameter(torch.ones(1, groups, 1, 1))
