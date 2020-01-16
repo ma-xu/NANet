@@ -59,9 +59,10 @@ class PRMLayer(nn.Module):
 
         Distance = abs(position_mask - query_position)
         Distance = Distance.type(query_value.type())
-        # add e^(-x), means closer more important
-        Distance = torch.exp(-Distance * self.theta)
-        Distance = (self.distance_embedding(Distance)).reshape(b, self.groups, h*w)
+        # # add e^(-x), means closer more important
+        # Distance = torch.exp(-Distance * self.theta)
+        # Distance = (self.distance_embedding(Distance)).reshape(b, self.groups, h*w)
+        Distance = (torch.sigmoid(Distance.mean(dim=1))).reshape(b, self.groups, h*w)
 
         context = similarity*Distance
         context = context - context.mean(dim=2, keepdim=True)
@@ -334,5 +335,5 @@ def demo2():
         # print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-# demo()
+demo()
 # demo2()
