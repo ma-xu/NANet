@@ -15,101 +15,57 @@ import time
 add position (only one position)
 """
 
-__all__ = ['prm10s2_16x1_l1norm_resnet50','prm10s2_4x16_l1norm_resnet50']
+__all__ = ['prm20_resnet18','prm20_resnet34','prm20_resnet50','prm20_resnet101','prm20_resnet152']
 
 """
 group is the number of selected points.
 """
 class PRMLayer(nn.Module):
-    def __init__(self, channel,reduction=16,groups=4,mode='l1norm'):
-        super(PRMLayer, self).__init__()
+    def __init__(self, channel,reduction=8,groups=32,mode='dotproduct'):
         self.mode = mode
-        self.groups = min(groups,channel//reduction)
-        self.reduction = reduction
-        self.query = nn.Conv2d(channel, channel//reduction, 1, groups=self.groups)
-        self.key   = nn.Conv2d(channel, channel//reduction, 1, groups=self.groups)
-        self.max_pool = nn.AdaptiveMaxPool2d(1,return_indices=True)
-        self.weight = Parameter(torch.zeros(1,self.groups,1,1))
-        self.bias = Parameter(torch.ones(1,self.groups,1,1))
+        super(PRMLayer, self).__init__()
+        self.groups = min(channel//reduction,groups)
+        self.embed = nn.Conv2d(channel,channel//reduction,1,groups=self.groups)
+        self.position = Parameter(torch.ones(self.groups,2))
+        self.gap = nn.AdaptiveAvgPool2d(1)
+        self.alpha = Parameter(torch.zeros(1, groups, 1, 1))
+        self.beta = Parameter(torch.ones(1, groups, 1, 1))
         self.sig = nn.Sigmoid()
-        self.distance_embedding = nn.Sequential(
-            nn.Conv2d(2,8,1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(8,1,1)
-        )
-        self.theta = Parameter(torch.zeros(1))
+
 
     def forward(self, x):
-
-        b,c,h,w = x.size()
-        # Similarity function
-        query = self.query(x)
-        position_mask = self.get_position_mask(x,b,h,w,self.groups)
-        key = self.key(x)
-        key_value, key_position = self.get_key_position(key,self.groups) # shape [b*num,2,1,1]
-        return x+key_value.mean(dim=1,keepdim=True)+query.mean(dim=1,keepdim=True)
-
-        # Distance = abs(position_mask-key_position)
-        # Distance = Distance.type(key.type())
-        # # add e^(-x), means closer more important
-        # # Distance=torch.exp(-Distance*self.theta)
-        # Distance = torch.exp(-Distance * self.theta)
-        # Distance = (self.distance_embedding(Distance)).reshape(b,self.groups,h,w)
-        #
-        #
-        #
-        #
-        #
-        #
-        # query = query.view(b*self.groups,(c//self.reduction)//self.groups,h*w)
-        # key_value = key_value.view(b*self.groups,(c//self.reduction)//self.groups,1)
-        # similarity = self.get_similarity(query,key_value,mode=self.mode)
-        # similarity = similarity.view(b,self.groups,h,w)
-        #
-        #
-        #
-        # context = (similarity*torch.sigmoid(Distance)).view(b, self.groups, -1)
-        # context = context - context.mean(dim=2, keepdim=True)
-        # std = context.std(dim=2, keepdim=True) + 1e-5
-        # context = (context/std).view(b,self.groups,h,w)
-        # # affine function
-        # context = context * self.weight + self.bias
-        # context = context.view(b*self.groups,1,h,w)\
-        #     .expand(b*self.groups, c//self.groups, h, w).reshape(b,c,h,w)
-        # value = x*self.sig(context)
-        #
-        # return value
+        embed = self.embed(x)
+        b,c,h,w = x.shape
+        gap = self.gap(embed)
+        gap = gap.view(b * self.groups, -1, 1)
+        embed = embed.view(b*self.groups,-1,h*w)
 
 
-    def get_position_mask(self,x,b,h,w,number):
-        mask = (x[0, 0, :, :] != 2020).nonzero()
-        mask = (mask.reshape(h,w, 2)).permute(2,0,1).expand(b*number,2,h,w)
-        return mask
-
-    def get_key_position(self, key,groups):
-        b,c,h,w = key.size()
-        value = key.view(b*groups,c//groups,h,w)
-        sumvalue = value.sum(dim=1,keepdim=True)
-        maxvalue,maxposition = self.max_pool(sumvalue)
-        t_position = torch.cat((maxposition//w,maxposition % w),dim=1)
-
-        t_value = value[torch.arange(b*groups),:,t_position[:,0,0,0],t_position[:,1,0,0]]
-        t_value = t_value.view(b, c, 1, 1)
 
 
-        # position = (sumvalue==maxvalue).nonzero()
-        # target_value = value[position[:, 0], :, position[:, 2], position[:, 3]]
-        # target_value = target_value.view(b, c, 1, 1)
-        # position = (position[:,2:4]).unsqueeze(-1).unsqueeze(-1)
-        #
-        # return target_value, position
-        return t_value, t_position
+        similarity = self.get_similarity(embed,gap,self.mode) # shape [b*self.groups,1,h*w]
+        similarity = similarity.view(b*self.groups,h*w)
+        similarity = similarity-similarity.mean(dim=1,keepdim=True)
+        std = similarity.std(dim=1, keepdim=True) + 1e-5
+        context = similarity/std
+        context = context.view(b, self.groups, h, w)
+        context = context * self.alpha + self.beta
+        context = context.view(b * self.groups, 1, h, w)
+        x = x.view(b * self.groups, -1, h, w)
+        out = x*self.sig(context)
+        out = out.view(b,c,h,w)
+
+        return out
+
+
+
+
 
     def get_similarity(self,query, key_value, mode='dotproduct'):
         if mode == 'dotproduct':
             similarity = torch.matmul(key_value.permute(0, 2, 1), query)
         elif mode == 'l1norm':
-            similarity = -(abs(query - key_value)).sum(dim=1)
+            similarity = -(abs(query - key_value)).sum(dim=1, keepdim=True)
         elif mode == 'gaussian':
             # Gaussian Similarity (No recommanded, too sensitive to noise)
             similarity = torch.exp(torch.matmul(key_value.permute(0, 2, 1), query))
@@ -118,6 +74,10 @@ class PRMLayer(nn.Module):
         else:
             similarity = torch.matmul(key_value.permute(0, 2, 1), query)
         return similarity
+
+
+
+
 
 
 
@@ -171,7 +131,7 @@ class BasicBlock(nn.Module):
 class Bottleneck(nn.Module):
     expansion = 4
 
-    def __init__(self, inplanes, planes, stride=1, downsample=None,prm_r=16,prm_g=4,prm_mode='l1norm'):
+    def __init__(self, inplanes, planes, stride=1, downsample=None):
         super(Bottleneck, self).__init__()
         self.conv1 = conv1x1(inplanes, planes)
         self.bn1 = nn.BatchNorm2d(planes)
@@ -179,7 +139,7 @@ class Bottleneck(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes)
         self.conv3 = conv1x1(planes, planes * self.expansion)
         self.bn3 = nn.BatchNorm2d(planes * self.expansion)
-        self.prm  = PRMLayer(planes * self.expansion,prm_r,prm_g,prm_mode)
+        self.prm  = PRMLayer(planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
@@ -210,7 +170,7 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, num_classes=1000, zero_init_residual=False, prm_r=16,prm_g=4,prm_mode='l1norm'):
+    def __init__(self, block, layers, num_classes=1000, zero_init_residual=False):
         super(ResNet, self).__init__()
         self.inplanes = 64
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
@@ -218,10 +178,10 @@ class ResNet(nn.Module):
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 64, layers[0],prm_r=prm_r,prm_g=prm_g,prm_mode=prm_mode)
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2,prm_r=prm_r,prm_g=prm_g,prm_mode=prm_mode)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2,prm_r=prm_r,prm_g=prm_g,prm_mode=prm_mode)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2,prm_r=prm_r,prm_g=prm_g,prm_mode=prm_mode)
+        self.layer1 = self._make_layer(block, 64, layers[0])
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
@@ -242,7 +202,7 @@ class ResNet(nn.Module):
                 elif isinstance(m, BasicBlock):
                     nn.init.constant_(m.bn2.weight, 0)
 
-    def _make_layer(self, block, planes, blocks, stride=1,prm_r=16,prm_g=4,prm_mode='l1norm'):
+    def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
@@ -251,10 +211,10 @@ class ResNet(nn.Module):
             )
 
         layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample,prm_r,prm_g,prm_mode))
+        layers.append(block(self.inplanes, planes, stride, downsample))
         self.inplanes = planes * block.expansion
         for _ in range(1, blocks):
-            layers.append(block(self.inplanes, planes,prm_r=prm_r,prm_g=prm_g,prm_mode=prm_mode))
+            layers.append(block(self.inplanes, planes))
 
         return nn.Sequential(*layers)
 
@@ -276,32 +236,51 @@ class ResNet(nn.Module):
         return x
 
 
-def prm10s2_16x1_l1norm_resnet50(pretrained=False, **kwargs):
+
+def prm20_resnet18(pretrained=False, **kwargs):
+    """Constructs a ResNet-18 model.
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
+    return model
+
+
+def prm20_resnet34(pretrained=False, **kwargs):
+    """Constructs a ResNet-34 model.
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = ResNet(BasicBlock, [3, 4, 6, 3], **kwargs)
+    return model
+
+
+def prm20_resnet50(pretrained=False, **kwargs):
     """Constructs a ResNet-50 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = ResNet(Bottleneck, [3, 4, 6, 3],prm_r=16,prm_g=1,prm_mode='l1norm', **kwargs)
+    model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
     return model
 
 
-def prm10s2_8x8_l1norm_resnet50(pretrained=False, **kwargs):
-    """Constructs a ResNet-50 model.
+def prm20_resnet101(pretrained=False, **kwargs):
+    """Constructs a ResNet-101 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = ResNet(Bottleneck, [3, 4, 6, 3],prm_r=8,prm_g=8,prm_mode='l1norm', **kwargs)
+    model = ResNet(Bottleneck, [3, 4, 23, 3], **kwargs)
     return model
 
 
-
-def prm10s2_4x16_l1norm_resnet50(pretrained=False, **kwargs):
-    """Constructs a ResNet-50 model.
+def prm20_resnet152(pretrained=False, **kwargs):
+    """Constructs a ResNet-152 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = ResNet(Bottleneck, [3, 4, 6, 3],prm_r=4,prm_g=16,prm_mode='l1norm', **kwargs)
+    model = ResNet(Bottleneck, [3, 8, 36, 3], **kwargs)
     return model
+
 
 
 
@@ -310,7 +289,7 @@ def prm10s2_4x16_l1norm_resnet50(pretrained=False, **kwargs):
 def demo():
     st = time.perf_counter()
     for i in range(1):
-        net = prm10s2_16x1_l1norm_resnet50(num_classes=1000)
+        net = prm20_resnet50(num_classes=1000)
         y = net(torch.randn(2, 3, 224,224))
         print(i)
     print("CPU time: {}".format(time.perf_counter() - st))
@@ -318,7 +297,7 @@ def demo():
 def demo2():
     st = time.perf_counter()
     for i in range(1):
-        net = prm10s2_8x8_l1norm_resnet50(num_classes=1000).cuda()
+        net = prm20_resnet50(num_classes=1000).cuda()
         y = net(torch.randn(2, 3, 224,224).cuda())
         print(i)
         # print("Allocated: {}".format(torch.cuda.memory_allocated()))
