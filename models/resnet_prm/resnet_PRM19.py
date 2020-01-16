@@ -61,10 +61,8 @@ class PRMLayer(nn.Module):
     def get_similarity(self,query, key_value, mode='dotproduct'):
         if mode == 'dotproduct':
             similarity = torch.matmul(key_value.permute(0, 2, 1), query)
-            similarity = torch.sqrt(similarity)
         elif mode == 'l1norm':
             similarity = -(abs(query - key_value)).sum(dim=1, keepdim=True)
-            similarity = similarity/query.shape[1]
         elif mode == 'gaussian':
             # Gaussian Similarity (No recommanded, too sensitive to noise)
             similarity = torch.exp(torch.matmul(key_value.permute(0, 2, 1), query))
