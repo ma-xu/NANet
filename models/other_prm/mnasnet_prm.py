@@ -15,7 +15,7 @@ class PRMLayer(nn.Module):
     def __init__(self,channel,groups=8,mode='dotproduct'):
         super(PRMLayer, self).__init__()
         self.mode = mode
-        print(channel)
+        # print(channel)
         self.groups = groups
         self.max_pool = nn.AdaptiveMaxPool2d(1,return_indices=True)
         self.weight = Parameter(torch.zeros(1,self.groups,1,1))
