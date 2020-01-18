@@ -1,9 +1,9 @@
 from __future__ import absolute_import
 
 # ResNet
-from .resnet import *
+# from .resnet import *
 
-from .mobilenet import *
+# from .mobilenet import *
 
 # from .resnet_distribution import *
 
@@ -12,3 +12,6 @@ from .mobilenet import *
 # from .resnet_distance import *
 
 from .resnet_prm import *
+
+from .other_prm import *
+
