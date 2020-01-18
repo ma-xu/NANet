@@ -61,7 +61,7 @@ parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
 parser.add_argument('-b', '--batch-size', default=256, type=int,
                     metavar='N', help='mini-batch size (default: 256)')
-parser.add_argument('--test-batch', default=64, type=int, metavar='N',
+parser.add_argument('--test-batch', default=32, type=int, metavar='N',
                     help='test batchsize (default: 200)')
 parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
                     metavar='LR', help='initial learning rate')
@@ -274,7 +274,7 @@ def main():
     pipe.build()
     train_loader = DALIClassificationIterator(pipe, size=int(pipe.epoch_size("Reader") / args.world_size))
 
-    pipe = HybridValPipe(batch_size=args.test_batch, num_threads=8, device_id=args.local_rank, data_dir=valdir, crop=crop_size, size=val_size)
+    pipe = HybridValPipe(batch_size=args.test_batch, num_threads=4, device_id=args.local_rank, data_dir=valdir, crop=crop_size, size=val_size)
     pipe.build()
     val_loader = DALIClassificationIterator(pipe, size=int(pipe.epoch_size("Reader") / args.world_size))
 
