@@ -49,3 +49,4 @@ from .resnet_PRM21 import *
 from .resnet_PRM22 import *
 from .resnet_PRM23 import *
 from .resnet_PRM23S import *
+from .resnet_PRM23_ab1 import *
