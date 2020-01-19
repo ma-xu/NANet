@@ -13,5 +13,7 @@ from __future__ import absolute_import
 
 from .resnet_prm import *
 
+from .resnet import *
+
 from .other_prm import *
 
