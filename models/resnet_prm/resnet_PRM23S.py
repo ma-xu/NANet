@@ -18,7 +18,7 @@ Actually the SGE + maxvalue
 
 
 
-__all__ = ['prm23_resnet18','prm23_resnet50_g1','prm23_resnet50_g4','prm23_resnet50_g16','prm23_resnet50_g128']
+__all__ = ['prm23_resnet18_g1','prm23_resnet18','prm23_resnet50_g1','prm23_resnet50_g4','prm23_resnet50_g16','prm23_resnet50_g128']
 
 """
 group is the number of selected points.
@@ -271,6 +271,14 @@ class ResNet(nn.Module):
 
         return x
 
+
+def prm23_resnet18_g1(pretrained=False, groups=1, **kwargs):
+    """Constructs a ResNet-18 model.
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = ResNet(BasicBlock, [2, 2, 2, 2], groups = groups,**kwargs)
+    return model
 
 
 def prm23_resnet18(pretrained=False, groups=64, **kwargs):
