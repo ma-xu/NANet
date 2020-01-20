@@ -63,11 +63,11 @@ class PRMLayer(nn.Module):
         # Distance = torch.exp(-Distance * self.theta)
         # Distance = (self.distance_embedding(Distance)).reshape(b, self.groups, h*w)
         similarity_max = similarity_max*Distance
-        similarity_max = similarity_max/math.sqrt(c//self.groups)
+        similarity_max = similarity_max/(c//self.groups)
 
 
         similarity_gap = similarity_gap.view(b, self.groups, h*w)
-        similarity_gap = similarity_gap / math.sqrt(c // self.groups)
+        similarity_gap = similarity_gap / (c // self.groups)
 
         similarity = similarity_max*self.zero+similarity_gap*self.one
 
