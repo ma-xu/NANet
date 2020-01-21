@@ -8,6 +8,7 @@ from torch.autograd import Variable
 from collections import OrderedDict
 import math
 import time
+import numpy as np
 from torch.distributions.normal import Normal
 
 """
@@ -44,7 +45,7 @@ class PRMLayer(nn.Module):
         position_mask = self.get_position_mask(x, b, h, w, self.groups)
         # Similarity function
         query_value, query_position = self.get_query_position(x, self.groups)  # shape [b*num,2,1,1]
-        print(query_position.float()/h)
+        # print(query_position.float()/h)
         query_value = query_value.view(b*self.groups,-1,1)
         x_value = x.view(b*self.groups,-1,h*w)
         similarity_max = self.get_similarity(x_value, query_value, mode=self.mode)
@@ -58,6 +59,8 @@ class PRMLayer(nn.Module):
         distribution = Normal(0, self.scale)
         Distance = distribution.log_prob(Distance * self.theta).exp().clone()
         Distance = (Distance.mean(dim=1)).view(b, self.groups, h * w)
+        print_Dis = Distance.mean(dim=0).mean(dim=0).view(h,w)
+        np.savetxt(time.perf_counter().__str__()+'.txt',print_Dis.detach().numpy())
         # # add e^(-x), means closer more important
         # Distance = torch.exp(-Distance * self.theta)
         # Distance = (self.distance_embedding(Distance)).reshape(b, self.groups, h*w)
@@ -339,5 +342,5 @@ def demo2():
         # print("Allocated: {}".format(torch.cuda.memory_allocated()))
     print("GPU time: {}".format(time.perf_counter() - st))
 
-# demo()
+demo()
 # demo2()
