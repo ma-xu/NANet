@@ -294,6 +294,10 @@ key_points = torch.Tensor(
 )
 
 
+key_points = torch.Tensor([
+
+])
+
 """
 # bird.jpeg
 key_points = torch.Tensor([
@@ -591,7 +595,7 @@ key_points = torch.Tensor([
 # 0:hight 1:weight
 key_points = key_points.view((16,4,2))
 print(key_points.shape)
-image_path = "GAMCAM/dog1.jpg"
+image_path = "GAMCAM/bird.jpeg"
 im = cv2.imread(image_path)
 h,w,c  = im.shape
 print(im.shape)
@@ -604,7 +608,7 @@ for i in range(16):
         print(int(H*h), int(W*w))
     print("______________________")
 
-    write_path = "/Users/melody/Downloads/dogpoints/"+str(i)+".jpg"
+    write_path = "/Users/melody/Downloads/points/bird"+str(i)+".jpg"
     cv2.imwrite(write_path,im)
 
     # cv2.namedWindow("image")
