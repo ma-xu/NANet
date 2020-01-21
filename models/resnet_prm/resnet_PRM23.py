@@ -44,7 +44,7 @@ class PRMLayer(nn.Module):
         position_mask = self.get_position_mask(x, b, h, w, self.groups)
         # Similarity function
         query_value, query_position = self.get_query_position(x, self.groups)  # shape [b*num,2,1,1]
-        print(query_position/h)
+        print(query_position.float()/h)
         query_value = query_value.view(b*self.groups,-1,1)
         x_value = x.view(b*self.groups,-1,h*w)
         similarity_max = self.get_similarity(x_value, query_value, mode=self.mode)
