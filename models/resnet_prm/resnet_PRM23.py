@@ -60,7 +60,7 @@ class PRMLayer(nn.Module):
         Distance = distribution.log_prob(Distance * self.theta).exp().clone()
         Distance = (Distance.mean(dim=1)).view(b, self.groups, h * w)
         print_Dis = Distance.mean(dim=0).mean(dim=0).view(h,w)
-        np.savetxt(time.perf_counter().__str__()+'.txt',print_Dis.detach().numpy())
+        np.savetxt(time.perf_counter().__str__()+'.txt',print_Dis.detach().cpu().numpy())
         # # add e^(-x), means closer more important
         # Distance = torch.exp(-Distance * self.theta)
         # Distance = (self.distance_embedding(Distance)).reshape(b, self.groups, h*w)
