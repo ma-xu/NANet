@@ -105,11 +105,8 @@ class PRMLayer(nn.Module):
             similarity = torch.matmul(key_value.permute(0, 2, 1), query).squeeze(dim=1)
         elif mode == 'l1norm':
             similarity = -(abs(query - key_value)).sum(dim=1)
-        elif mode == 'gaussian':
-            # Gaussian Similarity (No recommanded, too sensitive to noise)
-            similarity = torch.exp(torch.matmul(key_value.permute(0, 2, 1), query))
-            similarity[similarity == float("Inf")] = 0
-            similarity[similarity <= 1e-9] = 1e-9
+        elif mode == 'cosine':
+            similarity = torch.cosine_similarity(query,key_value,dim=1)
         else:
             similarity = torch.matmul(key_value.permute(0, 2, 1), query)
         return similarity
